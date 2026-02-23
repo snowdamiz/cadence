@@ -1,10 +1,10 @@
 import { Nav } from './components/Nav'
 import { Hero } from './components/Hero'
-import { Concept } from './components/Concept'
-import { Features } from './components/Features'
-import { HowItWorks } from './components/HowItWorks'
-import { Tools } from './components/Tools'
-import { Install } from './components/Install'
+import { Problem } from './components/Problem'
+import { Architecture } from './components/Architecture'
+import { Workflow } from './components/Workflow'
+import { Ecosystem } from './components/Ecosystem'
+import { GetStarted } from './components/GetStarted'
 import { Footer } from './components/Footer'
 
 export default function App() {
@@ -13,11 +13,11 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
-        <Concept />
-        <Features />
-        <HowItWorks />
-        <Tools />
-        <Install />
+        <Problem />
+        <Architecture />
+        <Workflow />
+        <Ecosystem />
+        <GetStarted />
       </main>
       <Footer />
     </div>

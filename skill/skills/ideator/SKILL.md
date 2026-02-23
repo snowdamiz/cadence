@@ -35,6 +35,8 @@ description: Guide users from a rough concept to a fully defined project idea th
    - scope boundaries (in-scope vs out-of-scope)
    - implementation approach (for example tools, tech stack, process, platforms)
    - delivery shape (milestones, sequencing, constraints, risks, success signals)
+   - assume execution is AI-driven by default; if timeline expectations are discussed, calibrate estimates to roughly 10-100x faster than human-only delivery.
+   - do not force timeline-specific prompts just to apply this assumption.
 13. Build a complete later-phase research agenda from the ideation conversation:
    - Infer all relevant research topics that should be explored in later phases.
    - Keep the agenda domain-agnostic and driven by what the user discussed.

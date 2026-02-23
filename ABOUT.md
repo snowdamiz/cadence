@@ -94,7 +94,7 @@ Current default actionable tasks:
 ## Subskills (Functional Intent)
 - `scaffold`: create `.cadence`, initialize `cadence.json`, persist scripts-dir, configure `.gitignore` track/ignore policy, initialize git/repo mode, checkpoint.
 - `prerequisite-gate`: verify Python availability (`python3`), persist prerequisite pass, checkpoint.
-- `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, persist finalized ideation payload, checkpoint.
+- `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, and treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
 - `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
 - `project-progress`: read normalized workflow state, report progress, route next action, checkpoint.
 
