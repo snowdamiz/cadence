@@ -1,30 +1,50 @@
 #!/usr/bin/env python3
 """Read and normalize Cadence workflow state from .cadence/cadence.json."""
 
+import argparse
 import copy
 import json
 import sys
 from pathlib import Path
 
+from project_root import resolve_project_root, write_project_root_hint
 from workflow_state import default_data, reconcile_workflow_state
 
 
-CADENCE_DIR = Path(".cadence")
-CADENCE_JSON_PATH = CADENCE_DIR / "cadence.json"
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 
-def load_state():
-    cadence_exists = CADENCE_DIR.exists()
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Read and normalize Cadence workflow state.",
+    )
+    parser.add_argument(
+        "--project-root",
+        default="",
+        help="Explicit project root path override.",
+    )
+    return parser.parse_args()
 
-    if not CADENCE_JSON_PATH.exists():
+
+def cadence_paths(project_root: Path) -> tuple[Path, Path]:
+    cadence_dir = project_root / ".cadence"
+    cadence_json_path = cadence_dir / "cadence.json"
+    return cadence_dir, cadence_json_path
+
+
+def load_state(project_root: Path):
+    cadence_dir, cadence_json_path = cadence_paths(project_root)
+    cadence_exists = cadence_dir.exists()
+
+    if not cadence_json_path.exists():
         data = default_data()
         data = reconcile_workflow_state(data, cadence_dir_exists=cadence_exists)
         if cadence_exists:
-            save_state(data)
+            save_state(project_root, data)
         return data
 
     try:
-        with CADENCE_JSON_PATH.open("r", encoding="utf-8") as file:
+        with cadence_json_path.open("r", encoding="utf-8") as file:
             original_data = json.load(file)
     except json.JSONDecodeError as exc:
         print(f"INVALID_CADENCE_JSON: {exc}", file=sys.stderr)
@@ -32,18 +52,19 @@ def load_state():
 
     data = reconcile_workflow_state(copy.deepcopy(original_data), cadence_dir_exists=cadence_exists)
     if data != original_data:
-        save_state(data)
+        save_state(project_root, data)
     return data
 
 
-def save_state(data):
-    CADENCE_DIR.mkdir(parents=True, exist_ok=True)
-    with CADENCE_JSON_PATH.open("w", encoding="utf-8") as file:
+def save_state(project_root: Path, data):
+    cadence_dir, cadence_json_path = cadence_paths(project_root)
+    cadence_dir.mkdir(parents=True, exist_ok=True)
+    with cadence_json_path.open("w", encoding="utf-8") as file:
         json.dump(data, file, indent=4)
         file.write("\n")
 
 
-def build_response(data):
+def build_response(data, project_root: Path, project_root_source: str):
     workflow = data.get("workflow", {})
     next_item = workflow.get("next_item", {})
     route = workflow.get("next_route", {"skill_name": "", "skill_path": "", "reason": ""})
@@ -69,12 +90,28 @@ def build_response(data):
         "next_phase": str(workflow.get("next_phase", next_item_id)),
         "route": route,
         "message": message,
+        "project_root": str(project_root),
+        "project_root_source": project_root_source,
     }
 
 
 def main():
-    data = load_state()
-    response = build_response(data)
+    args = parse_args()
+    explicit_project_root = args.project_root.strip() or None
+    try:
+        project_root, project_root_source = resolve_project_root(
+            script_dir=SCRIPT_DIR,
+            explicit_project_root=explicit_project_root,
+            require_cadence=False,
+            allow_hint=True,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1)
+
+    write_project_root_hint(SCRIPT_DIR, project_root)
+    data = load_state(project_root)
+    response = build_response(data, project_root, project_root_source)
     print(json.dumps(response))
 
 

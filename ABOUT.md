@@ -54,7 +54,7 @@ Per Cadence turn, high-level policy:
 3. Read workflow route (`read-workflow-state.py`) and treat `route.skill_name` as authoritative.
 4. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
 5. Use project-progress skill for resume/status intents.
-6. If user manually calls a subskill: assert workflow route first.
+6. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
 7. For net-new ideation handoff: after scaffold+prereq in-thread, instruct user to start fresh chat for ideation.
 
 Design emphasis:
@@ -106,6 +106,7 @@ Workflow/state:
 - `read-workflow-state.py`: load/reconcile/persist normalized state and emit route payload.
 - `set-workflow-item-status.py`: set item status and recalculate all derived fields.
 - `assert-workflow-route.py`: enforce legal skill transitions.
+- `resolve-project-root.py` + `project_root.py`: resolve active project root (cwd, explicit, or cached hint) so subskills can target the correct repo across chats.
 
 Scaffold/prereq:
 - `scaffold-project.sh`: idempotent `.cadence` bootstrap (uses template fallback JSON).

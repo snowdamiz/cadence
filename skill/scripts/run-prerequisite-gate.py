@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Run Cadence prerequisite gate and persist pass state."""
 
+import argparse
 import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+from project_root import resolve_project_root, write_project_root_hint
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -17,16 +20,44 @@ def run_command(command):
     return subprocess.run(command, capture_output=True, text=True, check=False)
 
 
-def assert_expected_route():
-    result = run_command([sys.executable, str(ROUTE_GUARD_SCRIPT), "--skill-name", "prerequisite-gate"])
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run Cadence prerequisite gate and persist pass state.",
+    )
+    parser.add_argument(
+        "--project-root",
+        default="",
+        help="Explicit project root path override.",
+    )
+    return parser.parse_args()
+
+
+def assert_expected_route(project_root: Path):
+    result = run_command(
+        [
+            sys.executable,
+            str(ROUTE_GUARD_SCRIPT),
+            "--skill-name",
+            "prerequisite-gate",
+            "--project-root",
+            str(project_root),
+        ]
+    )
     if result.returncode != 0:
         stderr = result.stderr.strip() or result.stdout.strip() or "WORKFLOW_ROUTE_CHECK_FAILED"
         print(stderr, file=sys.stderr)
         raise SystemExit(result.returncode)
 
 
-def resolve_scripts_dir():
-    result = run_command([sys.executable, str(RESOLVE_SCRIPT)])
+def resolve_scripts_dir(project_root: Path):
+    result = run_command(
+        [
+            sys.executable,
+            str(RESOLVE_SCRIPT),
+            "--project-root",
+            str(project_root),
+        ]
+    )
     if result.returncode != 0:
         stderr = result.stderr.strip() or "MISSING_CADENCE_SCRIPTS_DIR"
         print(stderr, file=sys.stderr)
@@ -40,9 +71,16 @@ def resolve_scripts_dir():
     return scripts_dir
 
 
-def read_prerequisite_state(scripts_dir):
+def read_prerequisite_state(scripts_dir, project_root: Path):
     script_path = Path(scripts_dir) / "handle-prerequisite-state.py"
-    result = run_command([sys.executable, str(script_path)])
+    result = run_command(
+        [
+            sys.executable,
+            str(script_path),
+            "--project-root",
+            str(project_root),
+        ]
+    )
     if result.returncode != 0:
         stderr = result.stderr.strip() or "PREREQUISITE_STATE_READ_FAILED"
         print(stderr, file=sys.stderr)
@@ -50,9 +88,17 @@ def read_prerequisite_state(scripts_dir):
     return result.stdout.strip()
 
 
-def write_prerequisite_state(scripts_dir, pass_state):
+def write_prerequisite_state(scripts_dir, pass_state, project_root: Path):
     script_path = Path(scripts_dir) / "handle-prerequisite-state.py"
-    result = run_command([sys.executable, str(script_path), pass_state])
+    result = run_command(
+        [
+            sys.executable,
+            str(script_path),
+            pass_state,
+            "--project-root",
+            str(project_root),
+        ]
+    )
     if result.returncode != 0:
         stderr = result.stderr.strip() or "PREREQUISITE_STATE_WRITE_FAILED"
         print(stderr, file=sys.stderr)
@@ -60,9 +106,23 @@ def write_prerequisite_state(scripts_dir, pass_state):
 
 
 def main():
-    assert_expected_route()
-    scripts_dir = resolve_scripts_dir()
-    state = read_prerequisite_state(scripts_dir)
+    args = parse_args()
+    explicit_project_root = args.project_root.strip() or None
+    try:
+        project_root, _ = resolve_project_root(
+            script_dir=SCRIPT_DIR,
+            explicit_project_root=explicit_project_root,
+            require_cadence=True,
+            allow_hint=True,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1)
+
+    write_project_root_hint(SCRIPT_DIR, project_root)
+    assert_expected_route(project_root)
+    scripts_dir = resolve_scripts_dir(project_root)
+    state = read_prerequisite_state(scripts_dir, project_root)
 
     if state == "true":
         print(json.dumps({"status": "ok", "prerequisites_pass": True, "source": "cache"}))
@@ -72,7 +132,7 @@ def main():
         print("MISSING_PYTHON3", file=sys.stderr)
         raise SystemExit(1)
 
-    write_prerequisite_state(scripts_dir, "1")
+    write_prerequisite_state(scripts_dir, "1", project_root)
     print(json.dumps({"status": "ok", "prerequisites_pass": True, "source": "fresh-check"}))
 
 

@@ -8,39 +8,40 @@ description: Discuss, audit, and update existing project ideation in .cadence/ca
 1. Keep user-facing responses focused on ideation content. Do not expose internal skill-routing, command output, or execution traces unless the user explicitly asks.
 2. Invoke this skill only when user intent is to discuss or modify already-saved ideation.
 3. Route first-time concept discovery to Cadence new-chat handoff: `Start a new chat and either say "help me define my project" or share your project brief.`
-4. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py` and store stdout in `CADENCE_SCRIPTS_DIR`.
-5. First message behavior in this skill conversation:
-   - Run `python3 "$CADENCE_SCRIPTS_DIR/expose-ideation.py"` and use the JSON output as active AI context.
-   - Run `python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"` and show that human-readable summary to the user.
+4. Resolve project root by running `python3 ../../scripts/resolve-project-root.py --require-cadence` and store stdout in `PROJECT_ROOT`.
+5. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py --project-root "$PROJECT_ROOT"` and store stdout in `CADENCE_SCRIPTS_DIR`.
+6. First message behavior in this skill conversation:
+   - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/expose-ideation.py"` and use the JSON output as active AI context.
+   - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"` and show that human-readable summary to the user.
    - Ask one intent-setting question: discussion only, add, change, or remove.
-6. Run the conversation one step at a time:
+7. Run the conversation one step at a time:
    - Ask exactly one question per turn.
    - Keep the full current project idea in mind while focusing on the selected area.
    - After each user answer, restate what changed and what remains unchanged.
-7. Support deep-dive updates for missing aspects:
+8. Support deep-dive updates for missing aspects:
    - If user says they forgot a topic, zoom into that topic and drill until clear.
    - Adapt topic depth to domain context (for example mechanics/systems, audience, scope boundaries, tech/process, risks, success criteria).
    - Avoid hard-coded question trees; derive next question from current context.
-8. Keep `research_agenda` synchronized with ideation updates:
+9. Keep `research_agenda` synchronized with ideation updates:
    - Re-infer and update research topics when scope, domain, audience, implementation approach, constraints, or risks change.
    - Keep entity ownership relationships valid: topics referencing an entity must stay in that entity's owner block.
    - Preserve untouched research blocks and entities when they remain relevant.
-9. Distinguish interaction modes clearly:
+10. Distinguish interaction modes clearly:
    - Discussion mode: analyze options and tradeoffs, do not persist.
    - Add/modify/remove mode: build the full updated ideation object before persistence.
-10. Before any write, present a short change plan with:
+11. Before any write, present a short change plan with:
    - Fields to add
    - Fields to update
    - Fields to remove
    - Fields unchanged
    - Research blocks/entities/topics affected
-11. Persist only after user confirmation.
-12. For any persistence mode (add, modify, or remove):
-   - Write the complete updated ideation object to `.cadence/ideation_payload.json`.
-   - Run `python3 "$CADENCE_SCRIPTS_DIR/prepare-ideation-research.py" --file .cadence/ideation_payload.json --allow-empty`.
-   - Run `python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file .cadence/ideation_payload.json --completion-state keep`.
-13. After persistence, confirm result by running `python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"`.
-14. Mention that granular research queries are available via `python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
-15. At end of this successful skill conversation, run `python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
-16. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-17. Ask whether to continue refining another aspect or stop.
+12. Persist only after user confirmation.
+13. For any persistence mode (add, modify, or remove):
+   - Write the complete updated ideation object to `"$PROJECT_ROOT/.cadence/ideation_payload.json"`.
+   - Run `python3 "$CADENCE_SCRIPTS_DIR/prepare-ideation-research.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json" --allow-empty`.
+   - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json" --completion-state keep`.
+14. After persistence, confirm result by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"`.
+15. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
+16. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
+17. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+18. Ask whether to continue refining another aspect or stop.

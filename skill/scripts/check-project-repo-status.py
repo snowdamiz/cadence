@@ -11,11 +11,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from project_root import write_project_root_hint
 from workflow_state import default_data, reconcile_workflow_state
 
 
 CADENCE_DIR = Path(".cadence")
 CADENCE_JSON_PATH = CADENCE_DIR / "cadence.json"
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 def run_command(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -140,6 +142,7 @@ def ensure_default_state(data: dict[str, Any]) -> dict[str, Any]:
 def main() -> int:
     args = parse_args()
     project_root = Path(args.project_root).resolve()
+    write_project_root_hint(SCRIPT_DIR, project_root)
 
     repo_status = detect_git_repo(project_root)
     cadence_exists = (project_root / CADENCE_JSON_PATH).exists()
