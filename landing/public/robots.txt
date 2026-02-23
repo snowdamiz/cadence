@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cadence.dev/sitemap.xml

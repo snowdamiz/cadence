@@ -3,14 +3,78 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>Cadence — Deterministic AI Workflows</title>
-    <meta name="description" content="Install a repeatable project operating system for AI tools. Workflow state machine, guarded skill router, atomic git checkpoints." />
+    <meta name="description" content="One workflow, eight AI tools, zero chaos. Cadence is a deterministic workflow engine with persistent state, guarded phase transitions, and atomic git checkpoints." />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#07070E" />
+
+    <!-- SEO -->
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://github.com/snowdamiz/cadence" />
+    <meta name="author" content="snowdamiz" />
+    <meta name="keywords" content="cadence, AI workflow, deterministic workflow, coding tools, state machine, git checkpoints, Claude, Codex, Gemini, Copilot, Windsurf" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Cadence — Deterministic AI Workflows" />
+    <meta property="og:description" content="One workflow, eight AI tools, zero chaos. A deterministic workflow engine with persistent state, guarded phase transitions, and atomic git checkpoints." />
+    <meta property="og:site_name" content="Cadence" />
+    <meta property="og:url" content="https://github.com/snowdamiz/cadence" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Cadence — Deterministic AI Workflows" />
+    <meta name="twitter:description" content="One workflow, eight AI tools, zero chaos. A deterministic workflow engine with persistent state, guarded phase transitions, and atomic git checkpoints." />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Cadence",
+        "description": "A deterministic workflow engine for AI coding tools with persistent state, guarded phase transitions, and atomic git checkpoints.",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "url": "https://github.com/snowdamiz/cadence",
+        "downloadUrl": "https://www.npmjs.com/package/cadence-skill-installer",
+        "softwareVersion": "0.2.12",
+        "author": {
+          "@type": "Person",
+          "name": "snowdamiz",
+          "url": "https://github.com/snowdamiz"
+        },
+        "codeRepository": "https://github.com/snowdamiz/cadence",
+        "programmingLanguage": "TypeScript"
+      }
+    </script>
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="padding:2rem;color:#fff;background:#07070E;font-family:sans-serif;text-align:center">
+        <h1>Cadence</h1>
+        <p>A deterministic workflow engine for AI coding tools.</p>
+        <p>Please enable JavaScript to view this site.</p>
+        <p><a href="https://github.com/snowdamiz/cadence" style="color:#AFD7FF">View on GitHub</a></p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

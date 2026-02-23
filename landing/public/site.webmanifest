@@ -1,0 +1,16 @@
+{
+  "name": "Cadence",
+  "short_name": "Cadence",
+  "description": "Deterministic workflow engine for AI coding tools",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#07070E",
+  "theme_color": "#07070E",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

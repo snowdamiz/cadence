@@ -1,3 +1,9 @@
+@property --ecosystem-wheel-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: true;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -169,7 +175,7 @@
 
   .ecosystem-counter-spin {
     display: inline-flex;
-    animation: ecosystem-wheel-spin 58s linear infinite reverse;
+    transform: rotate(calc(-1 * var(--ecosystem-wheel-angle)));
     transform-origin: center;
     will-change: transform;
   }
@@ -366,9 +372,19 @@
   .stagger-5 { transition-delay: 0.5s; }
 }
 
+@keyframes terminal-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes scroll-bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(6px); opacity: 0.7; }
+}
+
 @keyframes ecosystem-wheel-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: rotate(0deg); --ecosystem-wheel-angle: 0deg; }
+  to { transform: rotate(360deg); --ecosystem-wheel-angle: 360deg; }
 }
 
 @keyframes ecosystem-dash-forward {
@@ -438,13 +454,14 @@
     transition: none;
   }
 
+  .terminal-cursor,
+  .scroll-indicator,
   .ecosystem-wheel,
   .ecosystem-ambient,
   .ecosystem-orbit-main,
   .ecosystem-orbit-secondary,
   .ecosystem-signal,
   .ecosystem-anchor,
-  .ecosystem-counter-spin,
   .ecosystem-pill,
   .ecosystem-core,
   .ecosystem-core-ring,

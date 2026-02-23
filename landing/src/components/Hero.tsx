@@ -1,6 +1,6 @@
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard'
 import { TERMINAL_LINES, BANNER_LINES } from '@/lib/constants'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, ChevronDown } from 'lucide-react'
 import { Button } from './ui/button'
 
 const COLORS = {
@@ -16,7 +16,7 @@ function Banner({ delay }: { delay: number }) {
       className="animate-terminal-line opacity-0 my-2"
       style={{ animationDelay: `${delay}s` }}
     >
-      <div className="m-0 overflow-x-auto text-[15px] leading-none whitespace-pre">
+      <div className="m-0 overflow-x-auto text-[10px] sm:text-[15px] leading-none whitespace-pre">
         {BANNER_LINES.map((line, i) => {
           const third = Math.ceil(line.length / 3)
           const first = line.slice(0, third)
@@ -44,13 +44,13 @@ export function Hero() {
   let lineIndex = 0
 
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 pt-16">
+    <section className="relative flex min-h-[calc(100dvh)] sm:min-h-screen items-center justify-center overflow-hidden px-6 pt-16">
       {/* Ambient glows */}
       <div className="glow-salmon -left-32 -top-32 h-[500px] w-[500px]" />
       <div className="glow-periwinkle -right-32 top-1/4 h-[400px] w-[400px]" />
 
       <div className="relative z-10 mx-auto max-w-6xl w-full">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="grid items-center gap-8 lg:gap-12 lg:grid-cols-2">
           {/* Left: copy */}
           <div className="max-w-xl">
             <p className="mb-5 font-mono text-xs font-medium uppercase tracking-widest text-white/30">
@@ -68,7 +68,7 @@ export function Hero() {
               <Button
                 size="lg"
                 onClick={() => copy(installCmd)}
-                className="group font-mono text-sm"
+                className="group font-mono text-xs sm:text-sm"
               >
                 {copiedText === installCmd ? (
                   <>
@@ -108,13 +108,13 @@ export function Hero() {
           <div className="glass-card overflow-hidden p-0 terminal-glow">
             {/* Title bar */}
             <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
-              <span className="h-3 w-3 rounded-full bg-white/10" />
-              <span className="h-3 w-3 rounded-full bg-white/10" />
-              <span className="h-3 w-3 rounded-full bg-white/10" />
+              <span className="h-3 w-3 rounded-full bg-[#FF5F57]/70" />
+              <span className="h-3 w-3 rounded-full bg-[#FEBC2E]/70" />
+              <span className="h-3 w-3 rounded-full bg-[#28C840]/70" />
               <span className="ml-3 text-xs text-white/30 font-mono">terminal</span>
             </div>
             {/* Terminal body */}
-            <div className="p-5 font-mono text-[13px] leading-relaxed">
+            <div className="p-3 sm:p-5 font-mono text-xs sm:text-[13px] leading-relaxed">
               {TERMINAL_LINES.map((line, i) => {
                 if (line.type === 'banner') {
                   const bannerDelay = 0.3 + lineIndex * 0.1
@@ -175,9 +175,25 @@ export function Hero() {
 
                 return null
               })}
+              {/* Blinking cursor */}
+              <div
+                className="animate-terminal-line opacity-0 mt-1"
+                style={{ animationDelay: `${0.3 + lineIndex * 0.1}s` }}
+              >
+                <span className="text-periwinkle">$</span>{' '}
+                <span
+                  className="terminal-cursor inline-block h-[14px] w-[7px] translate-y-[2px] bg-white/70"
+                  style={{ animation: 'terminal-cursor-blink 1.1s step-end infinite' }}
+                />
+              </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Scroll indicator */}
+      <div className="scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2 z-10" style={{ animation: 'scroll-bounce 2.4s ease-in-out infinite' }}>
+        <ChevronDown size={20} className="text-white/30" />
       </div>
 
       {/* Grid pattern overlay */}

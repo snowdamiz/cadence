@@ -11,7 +11,7 @@ export const INSTALL_COMMANDS = [
 
 export const TOOLS = [
   { name: 'Codex', key: 'codex' },
-  { name: 'Agents', key: 'agents' },
+  { name: 'Antigravity', key: 'antigravity' },
   { name: 'Claude', key: 'claude' },
   { name: 'Gemini', key: 'gemini' },
   { name: 'Copilot', key: 'copilot' },

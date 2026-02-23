@@ -9,7 +9,7 @@ export function GetStarted() {
   const { copiedText, copy } = useCopyToClipboard()
 
   return (
-    <section ref={ref} id="get-started" className="relative px-6 py-32">
+    <section ref={ref} id="get-started" className="relative px-6 py-16 sm:py-32">
       <div className="glow-periwinkle left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2" />
 
       <div className="relative mx-auto max-w-3xl text-center">
@@ -28,7 +28,7 @@ export function GetStarted() {
             <button
               key={cmd.label}
               onClick={() => copy(cmd.command)}
-              className="glass-card-hover group flex w-full items-center gap-4 px-6 py-4 text-left"
+              className="glass-card-hover group flex w-full items-center gap-4 px-4 py-3 sm:px-6 sm:py-4 text-left"
             >
               <span className="shrink-0 rounded-lg bg-white/5 px-2 py-1 font-mono text-xs text-white/40">
                 {cmd.label}

@@ -14,7 +14,7 @@ function PhaseFlow() {
       {PHASES.map((phase, i) => (
         <div key={phase.label} className="flex shrink-0 items-center">
           <div
-            className={`flex h-10 items-center rounded-xl border px-5 font-mono text-sm font-medium ${
+            className={`flex h-8 px-3 text-xs sm:h-10 items-center rounded-xl border sm:px-5 font-mono sm:text-sm font-medium ${
               phase.color === 'periwinkle'
                 ? 'border-periwinkle/30 bg-periwinkle/10 text-periwinkle'
                 : phase.color === 'salmon'
@@ -28,7 +28,7 @@ function PhaseFlow() {
           {i < PHASES.length - 1 && (
             <div className="flex shrink-0 items-center gap-0">
               <div
-                className="h-px w-8"
+                className="h-px w-4 sm:w-8"
                 style={{
                   background: 'linear-gradient(90deg, rgba(175,215,255,0.25), rgba(255,175,175,0.25))',
                 }}
@@ -92,12 +92,12 @@ export function Architecture() {
   const ref = useScrollReveal()
 
   return (
-    <section ref={ref} id="architecture" className="relative px-6 py-32">
+    <section ref={ref} id="architecture" className="relative px-6 py-16 sm:py-32">
       {/* Ambient glow */}
       <div className="glow-periwinkle left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2" />
 
       <div className="relative mx-auto max-w-6xl">
-        <div className="scroll-reveal mb-16 text-center">
+        <div className="scroll-reveal mb-10 sm:mb-16 text-center">
           <p className="mb-3 text-sm font-medium uppercase tracking-widest text-periwinkle">
             Architecture
           </p>
@@ -117,10 +117,10 @@ export function Architecture() {
             >
               <div className="flex-1 p-8">
                 <div
-                  className={`mb-5 w-fit rounded-xl p-3 ${
+                  className={`mb-5 w-fit rounded-xl p-3 transition-all duration-300 ${
                     pillar.accent === 'salmon'
-                      ? 'bg-salmon/10 text-salmon'
-                      : 'bg-periwinkle/10 text-periwinkle'
+                      ? 'bg-salmon/10 text-salmon hover:shadow-[0_0_20px_-4px_rgba(255,175,175,0.25)]'
+                      : 'bg-periwinkle/10 text-periwinkle hover:shadow-[0_0_20px_-4px_rgba(175,215,255,0.25)]'
                   }`}
                 >
                   <pillar.icon size={24} />
@@ -129,7 +129,7 @@ export function Architecture() {
                 <p className="leading-relaxed text-white/50">{pillar.description}</p>
               </div>
               {/* Code preview — fixed height so all three bottom sections align */}
-              <div className="relative border-t border-white/[0.06] bg-bg-base/60 p-5" style={{ height: 160 }}>
+              <div className="relative border-t border-white/[0.06] bg-bg-base/60 p-5 h-[120px] sm:h-[160px]">
                 <pre className="overflow-hidden font-mono text-xs leading-relaxed text-white/40" style={{ height: '100%' }}>
                   {pillar.code}
                 </pre>

@@ -113,9 +113,9 @@ export function Problem() {
   const ref = useScrollReveal()
 
   return (
-    <section ref={ref} className="relative px-6 py-32">
+    <section ref={ref} className="relative px-6 py-16 sm:py-32">
       <div className="mx-auto max-w-6xl">
-        <div className="scroll-reveal mb-16 max-w-2xl">
+        <div className="scroll-reveal mb-10 sm:mb-16 max-w-2xl">
           <p className="mb-3 text-sm font-medium uppercase tracking-widest text-salmon">
             The problem
           </p>
@@ -132,10 +132,10 @@ export function Problem() {
               className={`scroll-reveal stagger-${i + 1} glass-card-hover flex flex-col p-7`}
             >
               <div
-                className={`mb-5 w-fit rounded-xl p-3 ${
+                className={`mb-5 w-fit rounded-xl p-3 transition-all duration-300 ${
                   problem.accent === 'salmon'
-                    ? 'bg-salmon/10 text-salmon'
-                    : 'bg-periwinkle/10 text-periwinkle'
+                    ? 'bg-salmon/10 text-salmon hover:shadow-[0_0_20px_-4px_rgba(255,175,175,0.25)]'
+                    : 'bg-periwinkle/10 text-periwinkle hover:shadow-[0_0_20px_-4px_rgba(175,215,255,0.25)]'
                 }`}
               >
                 <problem.icon size={22} />

@@ -174,13 +174,13 @@ export function Ecosystem() {
   const ref = useScrollReveal()
 
   return (
-    <section ref={ref} className="relative px-6 py-32">
+    <section ref={ref} className="relative px-6 py-16 sm:py-32">
       {/* Ambient glows */}
       <div className="glow-salmon left-1/4 top-1/2 h-[400px] w-[400px] -translate-y-1/2" />
       <div className="glow-periwinkle right-1/4 top-1/3 h-[350px] w-[350px]" />
 
       <div className="relative mx-auto max-w-4xl text-center">
-        <div className="scroll-reveal mb-12">
+        <div className="scroll-reveal mb-8 sm:mb-12">
           <p className="mb-3 text-sm font-medium uppercase tracking-widest text-periwinkle">
             Ecosystem
           </p>

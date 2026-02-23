@@ -5,9 +5,9 @@ function InstallPreview() {
   return (
     <div className="mt-6 overflow-hidden rounded-xl border border-white/[0.06] bg-bg-base/80">
       <div className="flex items-center gap-1.5 border-b border-white/[0.04] px-4 py-2.5">
-        <span className="h-2 w-2 rounded-full bg-white/10" />
-        <span className="h-2 w-2 rounded-full bg-white/10" />
-        <span className="h-2 w-2 rounded-full bg-white/10" />
+        <span className="h-2 w-2 rounded-full bg-[#FF5F57]/60" />
+        <span className="h-2 w-2 rounded-full bg-[#FEBC2E]/60" />
+        <span className="h-2 w-2 rounded-full bg-[#28C840]/60" />
         <span className="ml-2 font-mono text-[10px] text-white/20">terminal</span>
       </div>
       <div className="space-y-1.5 p-4 font-mono text-xs">
@@ -123,9 +123,9 @@ export function Workflow() {
   const ref = useScrollReveal()
 
   return (
-    <section ref={ref} className="relative px-6 py-32">
+    <section ref={ref} className="relative px-6 py-16 sm:py-32">
       <div className="mx-auto max-w-6xl">
-        <div className="scroll-reveal mb-16 text-center">
+        <div className="scroll-reveal mb-10 sm:mb-16 text-center">
           <p className="mb-3 text-sm font-medium uppercase tracking-widest text-salmon">
             Workflow
           </p>
@@ -145,10 +145,10 @@ export function Workflow() {
               {/* Icon + number */}
               <div className="mb-5 flex items-start justify-between">
                 <div
-                  className={`flex h-[72px] w-[72px] items-center justify-center rounded-2xl border transition-all duration-300 ${
+                  className={`flex h-14 w-14 sm:h-[72px] sm:w-[72px] items-center justify-center rounded-2xl border transition-all duration-300 ${
                     step.accent === 'salmon'
-                      ? 'border-salmon/20 bg-salmon/5 text-salmon'
-                      : 'border-periwinkle/20 bg-periwinkle/5 text-periwinkle'
+                      ? 'border-salmon/20 bg-salmon/5 text-salmon hover:shadow-[0_0_24px_-4px_rgba(255,175,175,0.3)] hover:border-salmon/35'
+                      : 'border-periwinkle/20 bg-periwinkle/5 text-periwinkle hover:shadow-[0_0_24px_-4px_rgba(175,215,255,0.3)] hover:border-periwinkle/35'
                   }`}
                 >
                   <step.icon size={28} />
