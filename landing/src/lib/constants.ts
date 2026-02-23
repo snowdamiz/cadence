@@ -20,19 +20,27 @@ export const TOOLS = [
   { name: 'OpenCode', key: 'opencode' },
 ] as const
 
-export const TERMINAL_LINES = [
-  { prompt: true, text: 'npx cadence-skill-installer' },
-  { prompt: false, text: '' },
-  { prompt: false, text: '  ██████╗ █████╗ ██████╗ ███████╗███╗   ██╗ ██████╗███████╗' },
-  { prompt: false, text: ' ██╔════╝██╔══██╗██╔══██╗██╔════╝████╗  ██║██╔════╝██╔════╝' },
-  { prompt: false, text: ' ██║     ███████║██║  ██║█████╗  ██╔██╗ ██║██║     █████╗' },
-  { prompt: false, text: ' ██║     ██╔══██║██║  ██║██╔══╝  ██║╚██╗██║██║     ██╔══╝' },
-  { prompt: false, text: ' ╚██████╗██║  ██║██████╔╝███████╗██║ ╚████║╚██████╗███████╗' },
-  { prompt: false, text: '  ╚═════╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚══════╝' },
-  { prompt: false, text: '' },
-  { prompt: false, text: ' ✓ Installed to ~/.codex/skills/cadence' },
-  { prompt: false, text: ' ✓ Installed to ~/.claude/skills/cadence' },
-  { prompt: false, text: ' ✓ Installed to ~/.gemini/skills/cadence' },
-  { prompt: false, text: '' },
-  { prompt: false, text: ' Done — 3 tools configured.' },
+export type ToolKey = (typeof TOOLS)[number]['key']
+
+// Original ASCII banner from the installer (scripts/install-cadence-skill.mjs)
+// The installer splits each line into thirds and colors: white | salmon | periwinkle
+export const BANNER_LINES = [
+  ' ██████╗ █████╗ ██████╗ ███████╗███╗   ██╗ ██████╗███████╗',
+  '██╔════╝██╔══██╗██╔══██╗██╔════╝████╗  ██║██╔════╝██╔════╝',
+  '██║     ███████║██║  ██║█████╗  ██╔██╗ ██║██║     █████╗  ',
+  '██║     ██╔══██║██║  ██║██╔══╝  ██║╚██╗██║██║     ██╔══╝  ',
+  '╚██████╗██║  ██║██████╔╝███████╗██║ ╚████║╚██████╗███████╗',
+  ' ╚═════╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚══════╝',
+] as const
+
+export const TERMINAL_LINES: readonly { type: 'prompt' | 'blank' | 'banner' | 'check' | 'done'; text?: string }[] = [
+  { type: 'prompt', text: 'npx cadence-skill-installer' },
+  { type: 'blank' },
+  { type: 'banner' },
+  { type: 'blank' },
+  { type: 'check', text: 'Installed to ~/.codex/skills/cadence' },
+  { type: 'check', text: 'Installed to ~/.claude/skills/cadence' },
+  { type: 'check', text: 'Installed to ~/.gemini/skills/cadence' },
+  { type: 'blank' },
+  { type: 'done', text: 'Done — 3 tools configured.' },
 ] as const
