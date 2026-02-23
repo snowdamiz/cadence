@@ -9,11 +9,11 @@ function TerminalWindow() {
       {/* Title bar */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.05] bg-white/[0.015]">
         <div className="flex gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-white/[0.08]" />
-          <div className="w-2.5 h-2.5 rounded-full bg-white/[0.08]" />
-          <div className="w-2.5 h-2.5 rounded-full bg-white/[0.08]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]/55" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]/55" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#28C840]/55" />
         </div>
-        <span className="text-white/[0.18] text-[11px] font-mono mx-auto pr-10 tracking-wide">
+        <span className="text-white/[0.35] text-[11px] font-mono mx-auto pr-10 tracking-wide">
           cadence-skill-installer
         </span>
       </div>
@@ -101,17 +101,17 @@ export function Hero() {
 
       {/* Ambient glows */}
       <div
-        className="absolute top-0 right-0 w-[700px] h-[550px] pointer-events-none"
+        className="absolute top-0 right-0 w-[800px] h-[600px] pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at top right, rgba(175, 215, 255, 0.065) 0%, transparent 60%)',
+            'radial-gradient(ellipse at top right, rgba(175, 215, 255, 0.12) 0%, transparent 60%)',
         }}
       />
       <div
-        className="absolute bottom-0 left-0 w-[500px] h-[400px] pointer-events-none"
+        className="absolute bottom-0 left-0 w-[600px] h-[500px] pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at bottom left, rgba(255, 175, 175, 0.045) 0%, transparent 60%)',
+            'radial-gradient(ellipse at bottom left, rgba(255, 175, 175, 0.09) 0%, transparent 60%)',
         }}
       />
 
@@ -120,9 +120,9 @@ export function Hero() {
           {/* Left — text */}
           <div className="flex flex-col">
             {/* Version badge */}
-            <div className="mb-8 inline-flex w-fit items-center gap-2 px-3 py-1.5 rounded-full border border-white/[0.09] bg-white/[0.025]">
+            <div className="mb-8 inline-flex w-fit items-center gap-2 px-3 py-1.5 rounded-full border border-white/[0.14] bg-white/[0.04]">
               <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-salmon to-periwinkle" />
-              <span className="font-mono text-[11px] text-white/35 tracking-widest">
+              <span className="font-mono text-[11px] text-white/55 tracking-widest">
                 v0.2.7 &mdash; now on npm
               </span>
             </div>
@@ -138,13 +138,13 @@ export function Hero() {
             </div>
 
             {/* Tagline */}
-            <p className="text-lg sm:text-xl font-medium text-white/70 mb-3 leading-snug max-w-[420px]">
+            <p className="text-lg sm:text-xl font-medium text-white/85 mb-3 leading-snug max-w-[420px]">
               Structured project operating system{' '}
               <span className="text-gradient">for AI-driven development</span>
             </p>
 
             {/* Description */}
-            <p className="text-sm text-white/35 leading-relaxed mb-10 max-w-[380px]">
+            <p className="text-sm text-white/55 leading-relaxed mb-10 max-w-[380px]">
               Turn ad-hoc AI behavior into repeatable workflows — deterministic
               routing, persisted state, and rollback-safe git checkpoints across
               eight tools.
@@ -157,11 +157,11 @@ export function Hero() {
                 className="group flex items-center gap-3 px-5 py-3.5 code-block w-fit hover:border-white/[0.18] transition-all duration-200"
                 title="Click to copy"
               >
-                <span className="font-mono text-xs text-white/20">$</span>
-                <code className="font-mono text-sm text-white/75">
+                <span className="font-mono text-xs text-white/40">$</span>
+                <code className="font-mono text-sm text-white/90">
                   {COMMAND}
                 </code>
-                <span className="ml-3 text-white/22 group-hover:text-white/50 transition-colors flex-shrink-0">
+                <span className="ml-3 text-white/40 group-hover:text-white/65 transition-colors flex-shrink-0">
                   {copied ? (
                     <Check className="w-3.5 h-3.5 text-green-400" />
                   ) : (
@@ -169,7 +169,7 @@ export function Hero() {
                   )}
                 </span>
               </button>
-              <p className="text-[11px] text-white/18 font-mono pl-1">
+              <p className="text-[11px] text-white/38 font-mono pl-1">
                 Requires Node &ge; 18
               </p>
             </div>
@@ -183,7 +183,7 @@ export function Hero() {
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/15">
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/30">
         <ChevronDown className="w-4 h-4 animate-scroll-down" />
       </div>
     </section>

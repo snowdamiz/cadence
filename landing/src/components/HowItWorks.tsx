@@ -1,35 +1,31 @@
 const steps = [
   {
-    number: '01',
     color: '#FFFFFF',
-    dimColor: 'rgba(255,255,255,0.55)',
+    dimColor: 'rgba(255,255,255,0.6)',
     title: 'Install',
     description:
-      'Run the installer and select your AI tools from an interactive multi-select TUI. Skill files are written directly to each tool\'s directory.',
+      "Run the installer and select your AI tools from an interactive multi-select TUI. Skill files are written directly to each tool's directory.",
     command: 'npx cadence-skill-installer',
   },
   {
-    number: '02',
     color: '#FFAFAF',
-    dimColor: 'rgba(255,175,175,0.55)',
+    dimColor: 'rgba(255,175,175,0.7)',
     title: 'Scaffold',
     description:
       'On first use Cadence creates .cadence/, initializes cadence.json, verifies Python availability, and persists your project configuration.',
     command: 'python3 scripts/run-scaffold-gate.py',
   },
   {
-    number: '03',
     color: '#FFAFAF',
-    dimColor: 'rgba(255,175,175,0.55)',
+    dimColor: 'rgba(255,175,175,0.7)',
     title: 'Ideate',
     description:
       'One-question-at-a-time project definition. Cadence infers a complete domain-agnostic research agenda with entities, topics, and semantic blocks.',
     command: 'python3 scripts/inject-ideation.py',
   },
   {
-    number: '04',
     color: '#AFD7FF',
-    dimColor: 'rgba(175,215,255,0.55)',
+    dimColor: 'rgba(175,215,255,0.7)',
     title: 'Execute',
     description:
       'Phased delivery with guarded milestones, rollup status tracking, and atomic semantic commits after every completed subskill conversation.',
@@ -45,7 +41,7 @@ export function HowItWorks() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 175, 175, 0.04) 0%, transparent 70%)',
+            'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(255, 175, 175, 0.05) 0%, transparent 70%)',
         }}
       />
 
@@ -53,46 +49,57 @@ export function HowItWorks() {
         {/* Header */}
         <div className="mb-16">
           <p className="section-label mb-3">Workflow</p>
-          <h2 className="text-3xl sm:text-4xl font-semibold text-white/90">
+          <h2 className="text-3xl sm:text-4xl font-semibold text-white">
             Four phases. Enforced.
           </h2>
         </div>
 
-        {/* Steps — 2×2 grid on desktop, stacked on mobile */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {steps.map((step) => (
+        {/* Steps — 2×2 grid on desktop, vertical stack on mobile */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {steps.map((step, i) => (
             <div
-              key={step.number}
-              className="glass-card-hover rounded-xl p-7"
+              key={step.title}
+              className="relative overflow-hidden rounded-2xl p-8"
+              style={{
+                background: `${step.color}05`,
+                border: `1px solid ${step.color}12`,
+              }}
             >
-              {/* Step number */}
-              <div
-                className="font-mono font-black text-5xl leading-none mb-5 select-none"
-                style={{ color: step.color, opacity: 0.15 }}
+              {/* Giant background step number */}
+              <span
+                className="absolute right-4 bottom-2 font-mono font-black select-none pointer-events-none leading-none"
+                style={{ fontSize: '7rem', color: step.color, opacity: 0.06 }}
               >
-                {step.number}
+                {String(i + 1).padStart(2, '0')}
+              </span>
+
+              {/* Step number badge */}
+              <div className="mb-6">
+                <span
+                  className="font-mono text-[11px] font-bold tracking-[0.2em]"
+                  style={{ color: step.color, opacity: 0.65 }}
+                >
+                  STEP {String(i + 1).padStart(2, '0')}
+                </span>
               </div>
 
               <h3
-                className="text-base font-semibold mb-2"
+                className="text-xl font-bold mb-3"
                 style={{ color: step.color }}
               >
                 {step.title}
               </h3>
-
-              <p className="text-[13px] text-white/40 leading-relaxed mb-5">
+              <p className="text-sm text-white/60 leading-relaxed mb-6">
                 {step.description}
               </p>
-
-              {/* Command */}
               <div
-                className="flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-[11px]"
+                className="relative z-10 inline-flex items-center gap-2 px-3.5 py-2.5 rounded-lg font-mono text-xs"
                 style={{
-                  background: 'rgba(6, 6, 16, 0.8)',
-                  border: '1px solid rgba(37, 37, 69, 0.55)',
+                  background: 'rgba(5, 5, 14, 0.9)',
+                  border: `1px solid ${step.color}22`,
                 }}
               >
-                <span style={{ color: step.dimColor }}>$</span>
+                <span style={{ color: step.dimColor, opacity: 0.6 }}>$</span>
                 <code style={{ color: step.dimColor }}>{step.command}</code>
               </div>
             </div>

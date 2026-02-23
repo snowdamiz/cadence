@@ -51,10 +51,11 @@ Installer behavior:
 Per Cadence turn, high-level policy:
 1. Check repo status (`check-project-repo-status.py`) and persist `state.repo-enabled`.
 2. If `.cadence` missing: run scaffold gate.
-3. Run prerequisite gate before lifecycle continuation.
-4. Use project-progress skill for resume/status intents.
-5. If user manually calls a subskill: assert workflow route first.
-6. For net-new ideation handoff: after scaffold+prereq, instruct user to start fresh chat for ideation.
+3. Read workflow route (`read-workflow-state.py`) and treat `route.skill_name` as authoritative.
+4. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
+5. Use project-progress skill for resume/status intents.
+6. If user manually calls a subskill: assert workflow route first.
+7. For net-new ideation handoff: after scaffold+prereq in-thread, instruct user to start fresh chat for ideation.
 
 Design emphasis:
 - deterministic routing

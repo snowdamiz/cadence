@@ -37,9 +37,14 @@ description: Structured project operating system for end-to-end greenfield or br
 3. Scaffold initializes and persists `state.cadence-scripts-dir` for later subskill commands.
 4. If `.cadence` exists, skip scaffold.
 
-## Prerequisite Gate (Mandatory On First Turn)
-1. Invoke `skills/prerequisite-gate/SKILL.md`.
-2. Continue lifecycle and delivery execution only after prerequisite gate pass.
+## Workflow Route Gate (Mandatory Every Turn)
+1. After scaffold handling, run `python3 scripts/read-workflow-state.py` and parse the JSON response.
+2. Treat `next_item` and `route.skill_name` from that response as the authoritative workflow route.
+3. Do not invoke a state-changing subskill unless it matches `route.skill_name`.
+
+## Prerequisite Gate (Conditional)
+1. Invoke `skills/prerequisite-gate/SKILL.md` only when `route.skill_name` is `prerequisite-gate`.
+2. If `route.skill_name` is not `prerequisite-gate` (for example `ideator`), skip prerequisite gate and follow the active route instead.
 
 ## Progress / Resume Flow
 1. Invoke `skills/project-progress/SKILL.md` when the user asks to continue/resume or requests progress status (for example: "continue the project", "how far along are we?", "where did we leave off?").
@@ -51,10 +56,11 @@ description: Structured project operating system for end-to-end greenfield or br
 3. Do not execute state-changing subskill steps when assertion fails.
 
 ## Ideation Flow
-1. Do not switch to `skills/ideator/SKILL.md` inside this conversation.
-2. After scaffold and prerequisite gates pass for a net-new project, hand off to a fresh chat so context resets cleanly.
-3. Tell the user: `Start a new chat and either say "help me define my project" or share your project brief.`
-4. Stop here and wait for the user to continue in the new chat.
+1. When scaffold and prerequisite both complete in this same conversation for a net-new project, hand off to a fresh chat so context resets cleanly.
+2. Use this exact handoff line: `Start a new chat and either say "help me define my project" or share your project brief.`
+3. In subsequent conversations, if the workflow route is `ideator`, do not rerun prerequisite gate.
+4. If the user asks to define the project or provides a brief while route is `ideator`, invoke `skills/ideator/SKILL.md`.
+5. If route is `ideator` and the user has not provided ideation input yet, prompt with the same handoff line and wait.
 
 ## Ideation Update Flow
 1. If the user wants to modify or discuss existing ideation, invoke `skills/ideation-updater/SKILL.md`.

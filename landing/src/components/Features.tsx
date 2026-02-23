@@ -26,7 +26,6 @@ const features = [
     featured: true,
     accent: '#FFAFAF',
     preview: JSON_PREVIEW,
-    previewLang: 'json',
   },
   {
     icon: Route,
@@ -36,13 +35,11 @@ const features = [
     featured: true,
     accent: '#AFD7FF',
     preview: PHASE_FLOW,
-    previewLang: 'text',
   },
   {
     icon: Puzzle,
     title: 'Multi-tool ecosystem',
-    description:
-      'One installer, eight AI tools. Install to all in a single command.',
+    description: 'One installer, eight AI tools. Install to all in a single command.',
     accent: '#FFAFAF',
   },
   {
@@ -55,8 +52,7 @@ const features = [
   {
     icon: RefreshCw,
     title: 'Idempotent scaffolding',
-    description:
-      'Scaffold runs are always safe to repeat. Existing state is detected and preserved.',
+    description: 'Scaffold runs are always safe to repeat. Existing state is detected and preserved.',
     accent: '#FFAFAF',
   },
   {
@@ -71,27 +67,19 @@ const features = [
 export function Features() {
   return (
     <section className="relative py-24 px-5 overflow-hidden">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 50% at 50% 100%, rgba(175, 215, 255, 0.04) 0%, transparent 70%)',
-        }}
-      />
       <div className="divider absolute top-0 left-0 right-0" />
 
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-14">
           <p className="section-label mb-3">Capabilities</p>
-          <h2 className="text-3xl sm:text-4xl font-semibold text-white/90">
+          <h2 className="text-3xl sm:text-4xl font-semibold text-white">
             What Cadence does for you
           </h2>
         </div>
 
-        {/* Bento grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-auto">
-          {/* Featured cards (col-span-2) */}
+        {/* Featured features — bento cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
           {features
             .filter((f) => f.featured)
             .map((f) => {
@@ -99,65 +87,71 @@ export function Features() {
               return (
                 <div
                   key={f.title}
-                  className="lg:col-span-2 glass-card-hover rounded-xl p-7 flex flex-col"
+                  className="relative rounded-2xl overflow-hidden flex flex-col"
+                  style={{
+                    background: 'rgba(10, 10, 22, 0.95)',
+                    border: `1px solid ${f.accent}20`,
+                  }}
                 >
+                  {/* Inner gradient glow at top */}
                   <div
-                    className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg mb-5"
+                    className="absolute top-0 left-0 right-0 h-56 pointer-events-none"
                     style={{
-                      background: `${f.accent}10`,
-                      border: `1px solid ${f.accent}1c`,
+                      background: `radial-gradient(ellipse at top left, ${f.accent}14 0%, transparent 65%)`,
                     }}
-                  >
-                    <Icon
-                      style={{ color: f.accent, width: '17px', height: '17px' }}
-                      strokeWidth={1.5}
-                    />
-                  </div>
-                  <h3 className="text-[15px] font-semibold text-white/88 mb-2">
-                    {f.title}
-                  </h3>
-                  <p className="text-[13px] text-white/40 leading-relaxed mb-5">
-                    {f.description}
-                  </p>
-                  {/* Code preview */}
-                  <div className="mt-auto code-block rounded-lg px-4 py-3 overflow-x-auto">
-                    <pre
-                      className="font-mono text-[11px] leading-relaxed whitespace-pre"
-                      style={{ color: f.accent, opacity: 0.7 }}
+                  />
+
+                  <div className="relative z-10 p-8 flex flex-col h-full">
+                    <div
+                      className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl mb-6"
+                      style={{
+                        background: `${f.accent}18`,
+                        border: `1px solid ${f.accent}38`,
+                      }}
                     >
-                      {f.preview}
-                    </pre>
+                      <Icon
+                        className="w-5 h-5"
+                        style={{ color: f.accent }}
+                        strokeWidth={1.5}
+                      />
+                    </div>
+                    <h3 className="text-lg font-semibold text-white mb-2.5">
+                      {f.title}
+                    </h3>
+                    <p className="text-sm text-white/60 leading-relaxed mb-6">
+                      {f.description}
+                    </p>
+                    <div className="mt-auto code-block rounded-xl px-5 py-4 overflow-x-auto">
+                      <pre
+                        className="font-mono text-[11px] leading-relaxed whitespace-pre"
+                        style={{ color: f.accent, opacity: 0.9 }}
+                      >
+                        {f.preview}
+                      </pre>
+                    </div>
                   </div>
                 </div>
               )
             })}
+        </div>
 
-          {/* Regular cards (col-span-1) */}
+        {/* Secondary features — open 4-column strip */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-10 border-t border-white/[0.06] pt-12">
           {features
             .filter((f) => !f.featured)
             .map((f) => {
               const Icon = f.icon
               return (
-                <div
-                  key={f.title}
-                  className="glass-card-hover rounded-xl p-6 flex flex-col"
-                >
-                  <div
-                    className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-md mb-4"
-                    style={{
-                      background: `${f.accent}0f`,
-                      border: `1px solid ${f.accent}18`,
-                    }}
-                  >
-                    <Icon
-                      style={{ color: f.accent, width: '15px', height: '15px' }}
-                      strokeWidth={1.5}
-                    />
-                  </div>
-                  <h3 className="text-[13px] font-semibold text-white/82 mb-2">
+                <div key={f.title}>
+                  <Icon
+                    className="w-4 h-4 mb-4"
+                    style={{ color: f.accent }}
+                    strokeWidth={1.5}
+                  />
+                  <h3 className="text-[14px] font-semibold text-white/90 mb-2">
                     {f.title}
                   </h3>
-                  <p className="text-[12px] text-white/38 leading-relaxed">
+                  <p className="text-xs text-white/55 leading-relaxed">
                     {f.description}
                   </p>
                 </div>
