@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from project_root import read_oldpwd_hint, resolve_project_root, write_project_root_hint
+from project_root import resolve_project_root, write_project_root_hint
 from workflow_state import default_data, reconcile_workflow_state
 
 
@@ -158,16 +158,11 @@ def main() -> int:
         and project_root_source == "cwd-fallback"
         and project_root == SCRIPT_DIR.parent
     ):
-        oldpwd_root = read_oldpwd_hint(require_cadence=False)
-        if oldpwd_root is not None and oldpwd_root != project_root:
-            project_root = oldpwd_root
-            project_root_source = "oldpwd"
-        else:
-            print(
-                "AMBIGUOUS_PROJECT_ROOT: use --project-root when invoking from the Cadence skill directory.",
-                file=sys.stderr,
-            )
-            return 1
+        print(
+            "AMBIGUOUS_PROJECT_ROOT: use --project-root when invoking from the Cadence skill directory.",
+            file=sys.stderr,
+        )
+        return 1
 
     write_project_root_hint(SCRIPT_DIR, project_root)
 

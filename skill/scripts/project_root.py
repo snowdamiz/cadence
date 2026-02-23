@@ -84,6 +84,11 @@ def resolve_project_root(
     if explicit_project_root:
         project_root = Path(explicit_project_root).expanduser().resolve()
         source = "explicit"
+        skill_root = script_dir.resolve().parent
+        if project_root == skill_root and not (project_root / ".cadence").is_dir():
+            raise ValueError(
+                "AMBIGUOUS_PROJECT_ROOT: explicit --project-root resolved to the Cadence skill directory."
+            )
     else:
         cwd = Path.cwd().resolve()
         project_root = find_cadence_project_root(cwd) or cwd
