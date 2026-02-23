@@ -45,6 +45,11 @@ description: Structured project operating system for end-to-end greenfield or br
 1. Invoke `skills/project-progress/SKILL.md` when the user asks to continue/resume or requests progress status (for example: "continue the project", "how far along are we?", "where did we leave off?").
 2. Use that skill's state-based routing result to continue from the correct next phase.
 
+## Manual Subskill Safety Gate
+1. If the user manually requests a Cadence subskill, run `python3 scripts/assert-workflow-route.py --skill-name <subskill>` before executing it.
+2. If route assertion fails, stop and surface the exact script error.
+3. Do not execute state-changing subskill steps when assertion fails.
+
 ## Ideation Flow
 1. Do not switch to `skills/ideator/SKILL.md` inside this conversation.
 2. After scaffold and prerequisite gates pass for a net-new project, hand off to a fresh chat so context resets cleanly.

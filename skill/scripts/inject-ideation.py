@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -10,6 +11,19 @@ from workflow_state import default_data, reconcile_workflow_state
 
 
 CADENCE_JSON_PATH = Path(".cadence") / "cadence.json"
+SCRIPT_DIR = Path(__file__).resolve().parent
+ROUTE_GUARD_SCRIPT = SCRIPT_DIR / "assert-workflow-route.py"
+
+
+def run_command(command):
+    return subprocess.run(command, capture_output=True, text=True, check=False)
+
+
+def assert_ideator_route():
+    result = run_command([sys.executable, str(ROUTE_GUARD_SCRIPT), "--skill-name", "ideator"])
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or result.stdout.strip() or "WORKFLOW_ROUTE_CHECK_FAILED"
+        raise ValueError(stderr)
 
 
 def load_cadence():
@@ -99,6 +113,8 @@ def main():
     args = parse_args()
 
     try:
+        if args.completion_state == "complete":
+            assert_ideator_route()
         data = load_cadence()
         payload, payload_file_path = parse_payload(args)
     except ValueError as exc:

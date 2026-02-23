@@ -1,4 +1,4 @@
 interface:
   display_name: "Ideator"
   short_description: "Step-by-step domain-agnostic ideation"
-  default_prompt: "Guide the user from a rough concept or provided project brief to a fully defined idea. If a project brief is provided, decide whether it is sufficient, then ask one follow-up question at a time only for missing critical details before persisting the final ideation payload. Keep user-facing responses focused on ideation outcomes and do not expose internal skill-routing or command traces unless explicitly requested."
+  default_prompt: "Guide the user from a rough concept or provided project brief to a fully defined idea. Before ideation steps, assert the workflow route with scripts/assert-workflow-route.py --skill-name ideator and stop on mismatch. If a project brief is provided, decide whether it is sufficient, then ask one follow-up question at a time only for missing critical details before persisting the final ideation payload. Keep user-facing responses focused on ideation outcomes and do not expose internal skill-routing or command traces unless explicitly requested."

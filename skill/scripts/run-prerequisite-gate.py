@@ -10,10 +10,19 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 RESOLVE_SCRIPT = SCRIPT_DIR / "resolve-project-scripts-dir.py"
+ROUTE_GUARD_SCRIPT = SCRIPT_DIR / "assert-workflow-route.py"
 
 
 def run_command(command):
     return subprocess.run(command, capture_output=True, text=True, check=False)
+
+
+def assert_expected_route():
+    result = run_command([sys.executable, str(ROUTE_GUARD_SCRIPT), "--skill-name", "prerequisite-gate"])
+    if result.returncode != 0:
+        stderr = result.stderr.strip() or result.stdout.strip() or "WORKFLOW_ROUTE_CHECK_FAILED"
+        print(stderr, file=sys.stderr)
+        raise SystemExit(result.returncode)
 
 
 def resolve_scripts_dir():
@@ -51,6 +60,7 @@ def write_prerequisite_state(scripts_dir, pass_state):
 
 
 def main():
+    assert_expected_route()
     scripts_dir = resolve_scripts_dir()
     state = read_prerequisite_state(scripts_dir)
 

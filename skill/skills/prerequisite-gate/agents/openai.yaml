@@ -1,4 +1,4 @@
 interface:
   display_name: "Prerequisite Gate"
   short_description: "Run and persist Cadence prerequisite checks for Python availability"
-  default_prompt: "Run Cadence prerequisite checks, verify Python availability, and persist pass state before lifecycle or delivery execution. Keep user-facing messages focused on prerequisite outcomes and avoid internal command/routing traces unless explicitly requested."
+  default_prompt: "Run Cadence prerequisite checks, verify Python availability, and persist pass state before lifecycle or delivery execution. Before running prerequisite actions, assert the workflow route with scripts/assert-workflow-route.py --skill-name prerequisite-gate and stop on mismatch. Keep user-facing messages focused on prerequisite outcomes and avoid internal command/routing traces unless explicitly requested."
