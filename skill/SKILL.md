@@ -12,12 +12,17 @@ description: Structured project operating system for end-to-end greenfield or br
 ## Scaffold Gate (Mandatory On First Turn)
 1. Check for `.cadence` in the project root.
 2. If `.cadence` is missing, invoke `skills/scaffold/SKILL.md`.
-3. If `.cadence` exists, skip scaffold.
+3. Scaffold initializes and persists `state.cadence-scripts-dir` for later subskill commands.
+4. If `.cadence` exists, skip scaffold.
 
 ## Prerequisite Gate (Mandatory On First Turn)
 1. Invoke `skills/prerequisite-gate/SKILL.md`.
 2. Continue lifecycle and delivery execution only after prerequisite gate pass.
 
 ## Ideation Flow
-1. Invoke `skills/ideator/SKILL.md` when the user is creating, refining, or finalizing a project idea.
+1. Invoke `skills/ideator/SKILL.md` when the user is creating a new project idea from scratch and needs guided discovery to a finalized concept.
 2. Continue downstream planning only after ideation is persisted in `.cadence/cadence.json`.
+
+## Ideation Update Flow
+1. If the user wants to modify or discuss existing ideation, invoke `skills/ideation-updater/SKILL.md`.
+2. Use this update flow only for existing project ideation changes; use `skills/ideator/SKILL.md` for net-new ideation discovery.

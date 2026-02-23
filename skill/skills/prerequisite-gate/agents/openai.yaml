@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prerequisite Gate"
+  short_description: "Run and persist Cadence prerequisite checks for Python availability"
+  default_prompt: "Run Cadence prerequisite checks, verify Python availability, and persist pass state before lifecycle or delivery execution."

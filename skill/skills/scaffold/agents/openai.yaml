@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scaffold"
+  short_description: "Initialize Cadence project scaffolding for first-time setup"
+  default_prompt: "Initialize Cadence project scaffolding in the target project root, creating .cadence state files only when they do not already exist."

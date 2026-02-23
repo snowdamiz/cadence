@@ -24,47 +24,10 @@ description: Guide users from a rough concept to a fully defined project idea th
    - delivery shape (milestones, sequencing, constraints, risks, success signals)
 6. Do not hard-code assumptions. If you infer something, label it explicitly and ask for confirmation.
 7. When coverage is deep enough, present a final ideation summary and ask for confirmation.
-8. Resolve Cadence helper scripts directory before persistence:
-```bash
-if [ -n "${CADENCE_SCRIPTS_DIR:-}" ] && [ -f "${CADENCE_SCRIPTS_DIR}/inject-ideation.py" ]; then
-  :
-else
-  CADENCE_SCRIPTS_DIR=""
-  for candidate in \
-    "$HOME/.codex/skills/cadence-m/skill/scripts" \
-    "$HOME/.codex/skills/cadence/skill/scripts" \
-    "$HOME/.agents/skills/cadence-m/skill/scripts" \
-    "$HOME/.agents/skills/cadence/skill/scripts" \
-    "$HOME/.claude/skills/cadence-m/skill/scripts" \
-    "$HOME/.claude/skills/cadence/skill/scripts" \
-    "$HOME/.gemini/skills/cadence-m/skill/scripts" \
-    "$HOME/.gemini/skills/cadence/skill/scripts" \
-    "$HOME/.copilot/skills/cadence-m/skill/scripts" \
-    "$HOME/.copilot/skills/cadence/skill/scripts" \
-    "$HOME/.config/github-copilot/skills/cadence-m/skill/scripts" \
-    "$HOME/.config/github-copilot/skills/cadence/skill/scripts" \
-    "$HOME/.codeium/windsurf/skills/cadence-m/skill/scripts" \
-    "$HOME/.codeium/windsurf/skills/cadence/skill/scripts" \
-    "$HOME/.config/opencode/skills/cadence-m/skill/scripts" \
-    "$HOME/.config/opencode/skills/cadence/skill/scripts"
-  do
-    if [ -f "$candidate/inject-ideation.py" ]; then
-      CADENCE_SCRIPTS_DIR="$candidate"
-      break
-    fi
-  done
-fi
-[ -n "$CADENCE_SCRIPTS_DIR" ] || { echo "MISSING_CADENCE_SCRIPTS_DIR"; exit 1; }
-```
+8. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py` and store stdout in `CADENCE_SCRIPTS_DIR`.
 9. After confirmation, persist ideation programmatically:
    - Create a JSON payload file at `.cadence/ideation_payload.json`.
    - Write the full finalized ideation object to that file.
-   - Run (this injects ideation and deletes `.cadence/ideation_payload.json` on success):
-```bash
-python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file .cadence/ideation_payload.json --completion-state complete
-```
-10. Verify persistence:
-```bash
-python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"
-```
+   - Run `python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file .cadence/ideation_payload.json --completion-state complete` (this injects ideation and deletes `.cadence/ideation_payload.json` on success).
+10. Verify persistence by running `python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
 11. If the user requests revisions later, regenerate the payload and rerun `inject-ideation.py`.

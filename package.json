@@ -1,0 +1,22 @@
+{
+  "name": "cadence-skill-installer",
+  "version": "0.1.0",
+  "description": "Install the Cadence skill into supported AI tool skill directories.",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "cadence-skill-installer": "scripts/install-cadence-skill.mjs",
+    "cadence-install": "scripts/install-cadence-skill.mjs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "skill/**",
+    "scripts/install-cadence-skill.mjs",
+    "README.md"
+  ]
+}

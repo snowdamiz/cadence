@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ideation Updater"
+  short_description: "Discuss and update existing project ideation"
+  default_prompt: "Review current project ideation, discuss changes, and persist approved updates."

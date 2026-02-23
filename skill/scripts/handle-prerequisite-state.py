@@ -14,6 +14,7 @@ def default_data():
         "prerequisites-pass": False,
         "state": {
             "ideation-completed": False,
+            "cadence-scripts-dir": "",
         },
         "project-details": {},
         "ideation": {},

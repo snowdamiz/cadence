@@ -19,7 +19,8 @@ else
 {
     "prerequisites-pass": false,
     "state": {
-        "ideation-completed": false
+        "ideation-completed": false,
+        "cadence-scripts-dir": ""
     },
     "project-details": {},
     "ideation": {}
