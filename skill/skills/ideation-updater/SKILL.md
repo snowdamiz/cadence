@@ -6,7 +6,7 @@ description: Discuss, audit, and update existing project ideation in .cadence/ca
 # Ideation Updater
 
 1. Invoke this skill only when user intent is to discuss or modify already-saved ideation.
-2. Route first-time concept discovery to `skills/ideator/SKILL.md`.
+2. Route first-time concept discovery to Cadence new-chat handoff: `now make a new chat and say "help me define my project" or provide a project brief.`
 3. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py` and store stdout in `CADENCE_SCRIPTS_DIR`.
 4. First message behavior in this skill conversation:
    - Run `python3 "$CADENCE_SCRIPTS_DIR/expose-ideation.py"` and use the JSON output as active AI context.

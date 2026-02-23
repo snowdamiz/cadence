@@ -6,20 +6,10 @@ import json
 import sys
 from pathlib import Path
 
+from workflow_state import default_data, reconcile_workflow_state
+
 
 CADENCE_JSON_PATH = Path(".cadence") / "cadence.json"
-
-
-def default_data():
-    return {
-        "prerequisites-pass": False,
-        "state": {
-            "ideation-completed": False,
-            "cadence-scripts-dir": "",
-        },
-        "project-details": {},
-        "ideation": {},
-    }
 
 
 def load_cadence():
@@ -27,9 +17,10 @@ def load_cadence():
         return default_data()
     try:
         with CADENCE_JSON_PATH.open("r", encoding="utf-8") as file:
-            return json.load(file)
+            data = json.load(file)
     except json.JSONDecodeError as exc:
         raise ValueError(f"Invalid JSON in {CADENCE_JSON_PATH}: {exc}") from exc
+    return reconcile_workflow_state(data, cadence_dir_exists=CADENCE_JSON_PATH.parent.exists())
 
 
 def save_cadence(data):
@@ -122,6 +113,7 @@ def main():
         data["ideation"] = payload
 
     apply_completion_state(data, args.completion_state)
+    data = reconcile_workflow_state(data, cadence_dir_exists=CADENCE_JSON_PATH.parent.exists())
     save_cadence(data)
 
     payload_deleted = False

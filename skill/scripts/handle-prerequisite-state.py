@@ -5,27 +5,18 @@ import json
 import sys
 from pathlib import Path
 
+from workflow_state import default_data, reconcile_workflow_state
+
 
 CADENCE_JSON_PATH = Path(".cadence") / "cadence.json"
-
-
-def default_data():
-    return {
-        "prerequisites-pass": False,
-        "state": {
-            "ideation-completed": False,
-            "cadence-scripts-dir": "",
-        },
-        "project-details": {},
-        "ideation": {},
-    }
 
 
 def load_data():
     if not CADENCE_JSON_PATH.exists():
         return default_data()
     with CADENCE_JSON_PATH.open("r", encoding="utf-8") as file:
-        return json.load(file)
+        data = json.load(file)
+    return reconcile_workflow_state(data, cadence_dir_exists=CADENCE_JSON_PATH.parent.exists())
 
 
 def save_data(data):
@@ -51,6 +42,7 @@ def main():
         return 0
 
     data["prerequisites-pass"] = sys.argv[1] == "1"
+    data = reconcile_workflow_state(data, cadence_dir_exists=CADENCE_JSON_PATH.parent.exists())
     save_data(data)
     print("true" if data["prerequisites-pass"] else "false")
     return 0

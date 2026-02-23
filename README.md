@@ -11,6 +11,7 @@ npx cadence-skill-installer
 The installer shows a multi-select prompt (comma-separated choices) so you can install into multiple tools in one run.
 If a selected tool already has Cadence installed, the installer prints an update notice and warns that files will be overwritten.
 In TTY terminals, selection is a real interactive TUI: use arrow keys (or `j`/`k`) to move, `space` to toggle, `a` to toggle all, and `enter` to confirm.
+The TUI includes color highlighting and a large ASCII `CADANCE` header.
 
 ## Non-interactive examples
 

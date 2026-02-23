@@ -33,6 +33,59 @@ const TOOL_TARGETS = [
 ];
 
 const SKIP_NAMES = new Set([".DS_Store", "__pycache__"]);
+const ANSI = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  cyan: "\x1b[36m",
+  brightCyan: "\x1b[96m",
+  brightMagenta: "\x1b[95m",
+  brightBlue: "\x1b[94m",
+  brightGreen: "\x1b[92m",
+  brightYellow: "\x1b[93m",
+  white: "\x1b[97m",
+  salmon: "\x1b[38;5;217m",
+  periwinkle: "\x1b[38;5;153m"
+};
+const CADANCE_ASCII = [
+  " ██████╗ █████╗ ██████╗ ███████╗███╗   ██╗ ██████╗███████╗",
+  "██╔════╝██╔══██╗██╔══██╗██╔════╝████╗  ██║██╔════╝██╔════╝",
+  "██║     ███████║██║  ██║█████╗  ██╔██╗ ██║██║     █████╗  ",
+  "██║     ██╔══██║██║  ██║██╔══╝  ██║╚██╗██║██║     ██╔══╝  ",
+  "╚██████╗██║  ██║██████╔╝███████╗██║ ╚████║╚██████╗███████╗",
+  " ╚═════╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═══╝ ╚═════╝╚══════╝"
+];
+
+function supportsColor() {
+  return output.isTTY && process.env.NO_COLOR === undefined;
+}
+
+function style(text, ...codes) {
+  if (!supportsColor() || codes.length === 0) {
+    return text;
+  }
+  return `${codes.join("")}${text}${ANSI.reset}`;
+}
+
+function colorizeAsciiBanner() {
+  return CADANCE_ASCII.map((line) => {
+    if (!supportsColor()) {
+      return line;
+    }
+
+    const len = line.length;
+    const third = Math.ceil(len / 3);
+    const part1 = line.slice(0, third);
+    const part2 = line.slice(third, third * 2);
+    const part3 = line.slice(third * 2);
+
+    return (
+      style(part1, ANSI.bold, ANSI.white) +
+      style(part2, ANSI.bold, ANSI.salmon) +
+      style(part3, ANSI.bold, ANSI.periwinkle)
+    );
+  });
+}
 
 function printHelp(binName) {
   const validTools = TOOL_TARGETS.map((tool) => tool.key).join(",");
@@ -240,18 +293,34 @@ function parseInteractiveSelection(selection, targets) {
 
 function renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice) {
   output.write("\x1b[2J\x1b[H");
-  output.write("Select tools to install Cadence skill into (multi-select).\n");
-  output.write("Use arrow keys (or j/k) to move, space to toggle, a to toggle all, enter to confirm, q to cancel.\n\n");
+  colorizeAsciiBanner().forEach((line) => output.write(`${line}\n`));
+  output.write("\n");
+  output.write(style("Select tools to install Cadence skill into (multi-select).\n", ANSI.bold, ANSI.white));
+  output.write(
+    style(
+      "Use arrow keys (or j/k) to move, space to toggle, a to toggle all, enter to confirm, q to cancel.\n\n",
+      ANSI.dim,
+      ANSI.periwinkle
+    )
+  );
 
   targets.forEach((target, idx) => {
-    const pointer = idx === cursorIndex ? ">" : " ";
-    const checked = selectedIndexes.has(idx) ? "x" : " ";
-    output.write(`${pointer} [${checked}] ${target.label} (${target.targetDir})\n`);
+    const isCurrent = idx === cursorIndex;
+    const isSelected = selectedIndexes.has(idx);
+    const pointer = isCurrent ? style(">", ANSI.bold, ANSI.brightYellow) : " ";
+    const checked = isSelected ? style("x", ANSI.bold, ANSI.brightGreen) : " ";
+    const labelText = isCurrent
+      ? style(target.label, ANSI.bold, ANSI.brightYellow)
+      : isSelected
+        ? style(target.label, ANSI.brightGreen)
+        : target.label;
+    const targetPathText = isCurrent ? style(target.targetDir, ANSI.brightCyan) : style(target.targetDir, ANSI.dim);
+    output.write(`${pointer} [${checked}] ${labelText} (${targetPathText})\n`);
   });
 
-  output.write(`\nSelected: ${selectedIndexes.size}\n`);
+  output.write(`\n${style("Selected:", ANSI.bold, ANSI.brightBlue)} ${style(String(selectedIndexes.size), ANSI.bold, ANSI.white)}\n`);
   if (notice) {
-    output.write(`${notice}\n`);
+    output.write(`${style(notice, ANSI.bold, ANSI.brightYellow)}\n`);
   }
 }
 
@@ -447,16 +516,16 @@ async function confirmInstall(parsed, selectedTargets) {
 
   const rl = readline.createInterface({ input, output });
   try {
-    output.write("\nInstall Cadence skill into:\n");
+    output.write(style("\nInstall Cadence skill into:\n", ANSI.bold, ANSI.white));
     selectedTargets.forEach((target) => {
       const suffix = target.installState?.cadenceInstalled
-        ? " [update: existing Cadence files will be overwritten]"
+        ? style(" [update: existing Cadence files will be overwritten]", ANSI.salmon)
         : target.installState?.exists
-          ? " [existing path detected: conflicting files may be overwritten]"
+          ? style(" [existing path detected: conflicting files may be overwritten]", ANSI.salmon)
           : "";
-      output.write(`- ${target.targetDir}${suffix}\n`);
+      output.write(`${style("-", ANSI.dim)} ${style(target.targetDir, ANSI.periwinkle)}${suffix}\n`);
     });
-    const answer = await rl.question("Continue? [y/N]: ");
+    const answer = await rl.question(style("Continue? [y/N]: ", ANSI.bold, ANSI.white));
     return answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes";
   } finally {
     rl.close();
@@ -511,10 +580,10 @@ async function main() {
   for (const target of selectedTargetsWithState) {
     await copySkillContents(sourceDir, target.targetDir);
     const action = target.installState?.exists ? "Updated" : "Installed";
-    output.write(`${action} ${target.label}: ${target.targetDir}\n`);
+    output.write(`${style(action, ANSI.bold, ANSI.brightGreen)} ${style(target.label, ANSI.bold, ANSI.white)}: ${style(target.targetDir, ANSI.periwinkle)}\n`);
   }
 
-  output.write("\nCadence skill installation complete.\n");
+  output.write(style("\nCadence skill installation complete.\n", ANSI.bold, ANSI.brightGreen));
 }
 
 main().catch((error) => {
