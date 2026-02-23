@@ -121,6 +121,73 @@ function buildTargets(homeDir) {
   }));
 }
 
+async function detectInstallState(targetDir) {
+  let targetStat;
+  try {
+    targetStat = await fs.stat(targetDir);
+  } catch {
+    return {
+      exists: false,
+      cadenceInstalled: false
+    };
+  }
+
+  if (!targetStat.isDirectory()) {
+    return {
+      exists: true,
+      cadenceInstalled: false
+    };
+  }
+
+  const markerPath = path.join(targetDir, "SKILL.md");
+  try {
+    const markerStat = await fs.stat(markerPath);
+    return {
+      exists: true,
+      cadenceInstalled: markerStat.isFile()
+    };
+  } catch {
+    return {
+      exists: true,
+      cadenceInstalled: false
+    };
+  }
+}
+
+async function addInstallState(targets) {
+  return Promise.all(
+    targets.map(async (target) => ({
+      ...target,
+      installState: await detectInstallState(target.targetDir)
+    }))
+  );
+}
+
+function printUpdateNotice(selectedTargets) {
+  const cadenceInstalled = selectedTargets.filter((target) => target.installState?.cadenceInstalled);
+  const existingPaths = selectedTargets.filter(
+    (target) => target.installState?.exists && !target.installState?.cadenceInstalled
+  );
+
+  if (cadenceInstalled.length === 0 && existingPaths.length === 0) {
+    return;
+  }
+
+  output.write("\nUpdate notice:\n");
+
+  cadenceInstalled.forEach((target) => {
+    output.write(
+      `- ${target.label}: existing Cadence skill detected at ${target.targetDir}. Files will be overwritten.\n`
+    );
+  });
+
+  existingPaths.forEach((target) => {
+    output.write(
+      `- ${target.label}: existing path found at ${target.targetDir}. Conflicting files may be overwritten.\n`
+    );
+  });
+}
+
 function parseToolKeyList(toolList) {
   const keys = String(toolList)
     .split(",")
@@ -244,7 +311,14 @@ async function confirmInstall(parsed, selectedTargets) {
   const rl = readline.createInterface({ input, output });
   try {
     output.write("\nInstall Cadence skill into:\n");
-    selectedTargets.forEach((target) => output.write(`- ${target.targetDir}\n`));
+    selectedTargets.forEach((target) => {
+      const suffix = target.installState?.cadenceInstalled
+        ? " [update: existing Cadence files will be overwritten]"
+        : target.installState?.exists
+          ? " [existing path detected: conflicting files may be overwritten]"
+          : "";
+      output.write(`- ${target.targetDir}${suffix}\n`);
+    });
     const answer = await rl.question("Continue? [y/N]: ");
     return answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes";
   } finally {
@@ -288,15 +362,19 @@ async function main() {
     return;
   }
 
-  const confirmed = await confirmInstall(parsed, selectedTargets);
+  const selectedTargetsWithState = await addInstallState(selectedTargets);
+  printUpdateNotice(selectedTargetsWithState);
+
+  const confirmed = await confirmInstall(parsed, selectedTargetsWithState);
   if (!confirmed) {
     output.write("Installation cancelled.\n");
     return;
   }
 
-  for (const target of selectedTargets) {
+  for (const target of selectedTargetsWithState) {
     await copySkillContents(sourceDir, target.targetDir);
-    output.write(`Installed to ${target.label}: ${target.targetDir}\n`);
+    const action = target.installState?.exists ? "Updated" : "Installed";
+    output.write(`${action} ${target.label}: ${target.targetDir}\n`);
   }
 
   output.write("\nCadence skill installation complete.\n");

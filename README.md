@@ -9,6 +9,7 @@ npx cadence-skill-installer
 ```
 
 The installer shows a multi-select prompt (comma-separated choices) so you can install into multiple tools in one run.
+If a selected tool already has Cadence installed, the installer prints an update notice and warns that files will be overwritten.
 
 ## Non-interactive examples
 
