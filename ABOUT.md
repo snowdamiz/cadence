@@ -71,6 +71,7 @@ Default model includes:
 - `state.repo-enabled` (bool; governs push vs local-only checkpoints)
 - `workflow.plan` (nested milestone -> phase -> wave -> task)
 - `project-details` and `ideation` objects
+- `ideation.research_agenda` with normalized research `blocks`, `entity_registry`, and `topic_index` for later-phase deep research routing/querying
 
 Current default actionable tasks:
 - `task-scaffold` -> `scaffold`
@@ -80,6 +81,7 @@ Current default actionable tasks:
 ### 4) Derive + Route Workflow
 `workflow_state.py` is the core state engine:
 - normalizes malformed/missing fields
+- ensures ideation research agenda defaults exist in canonical shape
 - coerces statuses (`pending|in_progress|complete|blocked|skipped`)
 - rolls up parent statuses from children
 - computes `workflow.summary`, `next_item`, `next_route`, completion percent
@@ -91,8 +93,8 @@ Current default actionable tasks:
 ## Subskills (Functional Intent)
 - `scaffold`: create `.cadence`, initialize `cadence.json`, persist scripts-dir, configure `.gitignore` track/ignore policy, initialize git/repo mode, checkpoint.
 - `prerequisite-gate`: verify Python availability (`python3`), persist prerequisite pass, checkpoint.
-- `ideator`: one-question-at-a-time project ideation, persist finalized ideation payload, checkpoint.
-- `ideation-updater`: discuss/modify existing ideation with merge/replace semantics, checkpoint.
+- `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, persist finalized ideation payload, checkpoint.
+- `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
 - `project-progress`: read normalized workflow state, report progress, route next action, checkpoint.
 
 ## Script System (Execution Backplane)
@@ -113,8 +115,11 @@ Scaffold/prereq:
 - `configure-cadence-gitignore.py`: `.cadence` track/ignore policy updates.
 
 Ideation:
-- `inject-ideation.py`: validate/merge/replace ideation payload, route-guard when marking complete, optional payload-file deletion.
-- `get-ideation.py`, `expose-ideation.py`, `render-ideation-summary.py`: machine/human ideation reads.
+- `ideation_research.py`: shared normalization and validation for ideation research agenda shape and entity/topic/block relationships.
+- `prepare-ideation-research.py`: normalize and validate ideation payload research agenda before injection.
+- `query-ideation-research.py`: granular query surface for `ideation.research_agenda` by block, topic, entity, category, tag, priority, and text.
+- `inject-ideation.py`: validate/merge/replace ideation payload, enforce research agenda requirements when ideation is complete, route-guard when marking complete, optional payload-file deletion.
+- `get-ideation.py`, `expose-ideation.py`, `render-ideation-summary.py`: machine/human ideation reads and summaries.
 
 Git checkpoints:
 - `check-project-repo-status.py`: detect git+GitHub remote readiness; persist repo mode.

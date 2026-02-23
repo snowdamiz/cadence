@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ideation_research import ResearchAgendaValidationError, normalize_ideation_research
 from workflow_state import default_data, reconcile_workflow_state
 
 
@@ -129,6 +130,16 @@ def main():
         data["ideation"] = payload
 
     apply_completion_state(data, args.completion_state)
+    require_research_topics = bool(data.get("state", {}).get("ideation-completed", False))
+    try:
+        data["ideation"] = normalize_ideation_research(
+            data.get("ideation", {}),
+            require_topics=require_research_topics,
+        )
+    except ResearchAgendaValidationError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
     data = reconcile_workflow_state(data, cadence_dir_exists=CADENCE_JSON_PATH.parent.exists())
     save_cadence(data)
 

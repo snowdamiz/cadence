@@ -21,23 +21,26 @@ description: Discuss, audit, and update existing project ideation in .cadence/ca
    - If user says they forgot a topic, zoom into that topic and drill until clear.
    - Adapt topic depth to domain context (for example mechanics/systems, audience, scope boundaries, tech/process, risks, success criteria).
    - Avoid hard-coded question trees; derive next question from current context.
-8. Distinguish interaction modes clearly:
+8. Keep `research_agenda` synchronized with ideation updates:
+   - Re-infer and update research topics when scope, domain, audience, implementation approach, constraints, or risks change.
+   - Keep entity ownership relationships valid: topics referencing an entity must stay in that entity's owner block.
+   - Preserve untouched research blocks and entities when they remain relevant.
+9. Distinguish interaction modes clearly:
    - Discussion mode: analyze options and tradeoffs, do not persist.
-   - Add or modify mode: prepare a minimal patch payload and merge.
-   - Remove mode: rebuild the full ideation object without removed fields and replace.
-9. Before any write, present a short change plan with:
+   - Add/modify/remove mode: build the full updated ideation object before persistence.
+10. Before any write, present a short change plan with:
    - Fields to add
    - Fields to update
    - Fields to remove
    - Fields unchanged
-10. Persist only after user confirmation.
-11. For add or modify mode:
-   - Write changed fields to `.cadence/ideation_payload.json`.
-   - Run `python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file .cadence/ideation_payload.json --merge --completion-state keep`.
-12. For remove mode or structural rewrites:
+   - Research blocks/entities/topics affected
+11. Persist only after user confirmation.
+12. For any persistence mode (add, modify, or remove):
    - Write the complete updated ideation object to `.cadence/ideation_payload.json`.
+   - Run `python3 "$CADENCE_SCRIPTS_DIR/prepare-ideation-research.py" --file .cadence/ideation_payload.json --allow-empty`.
    - Run `python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file .cadence/ideation_payload.json --completion-state keep`.
 13. After persistence, confirm result by running `python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"`.
-14. At end of this successful skill conversation, run `python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
-15. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-16. Ask whether to continue refining another aspect or stop.
+14. Mention that granular research queries are available via `python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
+15. At end of this successful skill conversation, run `python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
+16. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+17. Ask whether to continue refining another aspect or stop.

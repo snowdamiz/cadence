@@ -10,6 +10,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from ideation_research import ensure_ideation_research_defaults
 
 WORKFLOW_SCHEMA_VERSION = 2
 VALID_STATUSES = {"pending", "in_progress", "complete", "blocked", "skipped"}
@@ -109,7 +110,7 @@ def default_data() -> dict[str, Any]:
             "repo-enabled": False,
         },
         "project-details": {},
-        "ideation": {},
+        "ideation": ensure_ideation_research_defaults({}),
         "workflow": {
             "schema_version": WORKFLOW_SCHEMA_VERSION,
             "plan": default_workflow_plan(),
@@ -427,6 +428,7 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
         data["project-details"] = {}
     if "ideation" not in data or not isinstance(data.get("ideation"), dict):
         data["ideation"] = {}
+    data["ideation"] = ensure_ideation_research_defaults(data.get("ideation"))
 
     workflow_seed = data.get("workflow")
     workflow_seed = dict(workflow_seed) if isinstance(workflow_seed, dict) else {}

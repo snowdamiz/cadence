@@ -33,14 +33,22 @@ description: Guide users from a rough concept to a fully defined project idea th
    - scope boundaries (in-scope vs out-of-scope)
    - implementation approach (for example tools, tech stack, process, platforms)
    - delivery shape (milestones, sequencing, constraints, risks, success signals)
-11. Do not hard-code assumptions. If you infer something, label it explicitly and ask for confirmation.
-12. When coverage is deep enough, present a final ideation summary and ask for confirmation.
-13. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py` and store stdout in `CADENCE_SCRIPTS_DIR`.
-14. After confirmation, persist ideation programmatically:
+11. Build a complete later-phase research agenda from the ideation conversation:
+   - Infer all relevant research topics that should be explored in later phases.
+   - Keep the agenda domain-agnostic and driven by what the user discussed.
+   - Group topics into coherent `research_agenda.blocks`.
+   - Track concrete entities (for example technologies, methods, standards, regulations, tools, audiences, channels) in `research_agenda.entity_registry`.
+   - Ensure entity relationships are block-consistent: if a topic references an entity, that topic must be in the entity's owner block.
+12. Do not hard-code assumptions. If you infer something, label it explicitly and ask for confirmation.
+13. When coverage is deep enough, present a final ideation summary and ask for confirmation.
+14. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py` and store stdout in `CADENCE_SCRIPTS_DIR`.
+15. After confirmation, persist ideation programmatically:
    - Create a JSON payload file at `.cadence/ideation_payload.json`.
-   - Write the full finalized ideation object to that file.
+   - Write the full finalized ideation object to that file, including `research_agenda` with `blocks`, `entity_registry`, and relationship-ready topic references.
+   - Run `python3 "$CADENCE_SCRIPTS_DIR/prepare-ideation-research.py" --file .cadence/ideation_payload.json`.
    - Run `python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file .cadence/ideation_payload.json --completion-state complete` (this injects ideation and deletes `.cadence/ideation_payload.json` on success).
-15. Verify persistence by running `python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
-16. At end of this successful skill conversation, run `python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
-17. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-18. If the user requests revisions later, regenerate the payload and rerun `inject-ideation.py`.
+16. Verify persistence by running `python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
+17. Mention that granular research queries are available via `python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
+18. At end of this successful skill conversation, run `python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
+19. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+20. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py`.

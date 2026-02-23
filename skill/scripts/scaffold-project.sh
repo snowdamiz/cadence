@@ -80,7 +80,19 @@ else
         ]
     },
     "project-details": {},
-    "ideation": {}
+    "ideation": {
+        "research_agenda": {
+            "version": 1,
+            "summary": {
+                "block_count": 0,
+                "topic_count": 0,
+                "entity_count": 0
+            },
+            "blocks": [],
+            "entity_registry": [],
+            "topic_index": {}
+        }
+    }
 }
 JSON
 fi
