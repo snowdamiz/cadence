@@ -81,7 +81,8 @@ description: Guide users from a rough concept to a fully defined project idea th
 21. Verify persistence by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
 22. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
 23. Mention that research execution runs in a separate `researcher` phase.
-24. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
-25. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-26. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
-27. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
+24. End successful ideation completion replies with this exact line: `Start a new chat with a new agent and say "plan my project".`
+25. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
+26. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+27. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
+28. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.

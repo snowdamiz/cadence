@@ -57,7 +57,7 @@ Per Cadence turn, high-level policy:
 6. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
 7. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
 8. For net-new ideation kickoff: after scaffold+prereq in-thread, force a fresh-chat handoff before running `ideator`.
-9. After that initial handoff, route directly to the active subskill in the same chat on future Cadence invocations (for example `ideator` once scaffold/prereq are done, then `researcher` once ideation is complete).
+9. After that initial handoff, route directly to the active subskill in the same chat on future Cadence invocations (for example `ideator` once scaffold/prereq are done). When ideation completes and route advances to `researcher`, Cadence now forces a new-chat handoff (`Start a new chat with a new agent and say "plan my project".`).
 
 Design emphasis:
 - deterministic routing

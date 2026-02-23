@@ -77,7 +77,7 @@ description: Structured project operating system for end-to-end greenfield or br
 2. In subsequent conversations, if the workflow route is `ideator`, do not rerun prerequisite gate.
 3. If the user asks to define the project or provides a brief while route is `ideator`, invoke `skills/ideator/SKILL.md`.
 4. If route is `ideator` and the user has not provided ideation input yet, ask one kickoff ideation question in-thread and continue.
-5. Do not force a new-chat handoff when route advances from `ideator` to `researcher`; let the next Cadence invocation route directly by workflow state.
+5. When route advances from `ideator` to `researcher`, force a handoff and end with this exact line: `Start a new chat with a new agent and say "plan my project".`
 
 ## Research Flow
 1. If the workflow route is `researcher`, invoke `skills/researcher/SKILL.md`.
