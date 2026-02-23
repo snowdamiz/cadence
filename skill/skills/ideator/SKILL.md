@@ -80,5 +80,4 @@ description: Guide users from a rough concept to a fully defined project idea th
 22. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
 23. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 24. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
-25. After ideation is completed and checkpointing succeeds, force subskill handoff by ending with this exact line: `Start a new chat and say "continue research".`
-26. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
+25. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
