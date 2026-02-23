@@ -36,12 +36,28 @@ description: Discuss, audit, and update existing project ideation in .cadence/ca
    - Fields unchanged
    - Research blocks/entities/topics affected
 12. Persist only after user confirmation.
-13. For any persistence mode (add, modify, or remove):
-   - Write the complete updated ideation object to `"$PROJECT_ROOT/.cadence/ideation_payload.json"`.
+13. Use this canonical ideation payload contract and do not inspect Cadence scripts to infer shape during normal operation:
+   - Payload root must be a JSON object representing the full updated `ideation` object.
+   - Preserve unchanged fields and update only confirmed changes; avoid dropping existing keys unless user asked to remove them.
+   - Keep core ideation fields explicit where relevant, including:
+     - `objective`, `core_outcome`, `target_audience`, `core_experience`
+     - `in_scope`, `out_of_scope`, `implementation_approach`
+     - `milestones`, `constraints`, `risks`, `success_signals`, `assumptions`
+   - `research_agenda` should include:
+     - `blocks` (array)
+     - `entity_registry` (array)
+     - `topic_index` (object, set to `{}` in payload; it is rebuilt during normalization)
+   - Each block should include `block_id`, `title`, `rationale`, `tags`, and `topics`.
+   - Each topic should include `topic_id`, `title`, `category`, `priority` (`low|medium|high`), `why_it_matters`, `research_questions`, `keywords`, `tags`, and `related_entities`.
+   - Each entity should include `entity_id`, `label`, `kind`, `aliases`, and `owner_block_id`.
+   - If `state.ideation-completed` is currently true, keep at least one research topic in `blocks` because injection with `--completion-state keep` still enforces non-empty topics.
+   - Relationship rule: every id listed in topic `related_entities` must exist in `entity_registry`, and that entity's `owner_block_id` must match the topic's block.
+14. For any persistence mode (add, modify, or remove):
+   - Write the complete updated ideation object to `"$PROJECT_ROOT/.cadence/ideation_payload.json"` using the contract above.
    - Run `python3 "$CADENCE_SCRIPTS_DIR/prepare-ideation-research.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json" --allow-empty`.
    - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json" --completion-state keep`.
-14. After persistence, confirm result by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"`.
-15. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
-16. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
-17. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-18. Ask whether to continue refining another aspect or stop.
+15. After persistence, confirm result by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"`.
+16. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
+17. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
+18. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+19. Ask whether to continue refining another aspect or stop.

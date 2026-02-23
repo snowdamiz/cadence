@@ -43,13 +43,36 @@ description: Guide users from a rough concept to a fully defined project idea th
    - Ensure entity relationships are block-consistent: if a topic references an entity, that topic must be in the entity's owner block.
 14. Do not hard-code assumptions. If you infer something, label it explicitly and ask for confirmation.
 15. When coverage is deep enough, present a final ideation summary and ask for confirmation.
-16. After confirmation, persist ideation programmatically:
+16. Use this canonical ideation payload contract and do not inspect Cadence scripts to infer shape during normal operation:
+   - Payload root must be a JSON object representing the full `ideation` object.
+   - Include execution-ready core fields from discovery. Preferred keys:
+     - `objective` (string)
+     - `core_outcome` (string)
+     - `target_audience` (string or array)
+     - `core_experience` (string, array, or object)
+     - `in_scope` (array)
+     - `out_of_scope` (array)
+     - `implementation_approach` (object or array)
+     - `milestones` (array)
+     - `constraints` (array)
+     - `risks` (array)
+     - `success_signals` (array)
+     - `assumptions` (array, optional)
+   - `research_agenda` is required and must include:
+     - `blocks` (array with at least one topic total for ideator completion)
+     - `entity_registry` (array)
+     - `topic_index` (object, set to `{}` in payload; it is rebuilt during normalization)
+   - Each `research_agenda.blocks[]` item should include `block_id`, `title`, `rationale`, `tags`, and `topics`.
+   - Each `topics[]` item should include `topic_id`, `title`, `category`, `priority` (`low|medium|high`), `why_it_matters`, `research_questions`, `keywords`, `tags`, and `related_entities`.
+   - Each `entity_registry[]` item should include `entity_id`, `label`, `kind`, `aliases`, and `owner_block_id`.
+   - Relationship rule: every id listed in topic `related_entities` must exist in `entity_registry`, and that entity's `owner_block_id` must match the topic's block.
+17. After confirmation, persist ideation programmatically:
    - Create a JSON payload file at `"$PROJECT_ROOT/.cadence/ideation_payload.json"`.
-   - Write the full finalized ideation object to that file, including `research_agenda` with `blocks`, `entity_registry`, and relationship-ready topic references.
+   - Write the full finalized ideation object to that file using the contract above.
    - Run `python3 "$CADENCE_SCRIPTS_DIR/prepare-ideation-research.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json"`.
    - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json" --completion-state complete` (this injects ideation and deletes the payload file on success).
-17. Verify persistence by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
-18. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
-19. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
-20. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-21. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
+18. Verify persistence by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
+19. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
+20. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
+21. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+22. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
