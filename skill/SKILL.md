@@ -19,11 +19,12 @@ description: Structured project operating system for end-to-end greenfield or br
 
 ## Repo Status Gate
 1. At Cadence entry (first assistant response in the conversation), resolve `PROJECT_ROOT` with `python3 scripts/resolve-project-root.py --project-root "$PWD"` (resolve script paths from this skill directory but keep command cwd at the active project).
-2. Run `python3 scripts/check-project-repo-status.py --project-root "$PROJECT_ROOT"`.
-3. Read `repo_enabled` from script output and treat it as the authoritative push mode for the active subskill conversation.
-4. If `repo_enabled` is false, continue with local commits only until a GitHub remote is configured.
-5. Do not rerun this gate between normal user replies inside the same active subskill conversation.
-6. Rerun this gate only when:
+2. If `"$PROJECT_ROOT/.cadence"` exists, run `python3 scripts/check-project-repo-status.py --project-root "$PROJECT_ROOT"`.
+3. If `"$PROJECT_ROOT/.cadence"` does not exist, skip this gate at root entry and let `skills/scaffold/SKILL.md` establish repo mode after scaffold initialization.
+4. Read `repo_enabled` from script output and treat it as the authoritative push mode for the active subskill conversation.
+5. If `repo_enabled` is false, continue with local commits only until a GitHub remote is configured.
+6. Do not rerun this gate between normal user replies inside the same active subskill conversation.
+7. Rerun this gate only when:
    - starting a new Cadence conversation
    - transitioning to a different subskill after a completed checkpoint
    - handling explicit resume/status/reroute requests

@@ -29,6 +29,11 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Explicit project root path override.",
     )
+    parser.add_argument(
+        "--scripts-dir",
+        default="",
+        help="Optional pre-resolved cadence scripts directory. Skips scripts-dir resolution when provided.",
+    )
     return parser.parse_args()
 
 
@@ -108,6 +113,7 @@ def write_prerequisite_state(scripts_dir, pass_state, project_root: Path):
 def main():
     args = parse_args()
     explicit_project_root = args.project_root.strip() or None
+    explicit_scripts_dir = args.scripts_dir.strip()
     try:
         project_root, _ = resolve_project_root(
             script_dir=SCRIPT_DIR,
@@ -121,7 +127,18 @@ def main():
 
     write_project_root_hint(SCRIPT_DIR, project_root)
     assert_expected_route(project_root)
-    scripts_dir = resolve_scripts_dir(project_root)
+    if explicit_scripts_dir:
+        scripts_path = Path(explicit_scripts_dir).expanduser()
+        if not scripts_path.is_absolute():
+            scripts_path = (project_root / scripts_path).resolve()
+        else:
+            scripts_path = scripts_path.resolve()
+        if not scripts_path.is_dir():
+            print("INVALID_CADENCE_SCRIPTS_DIR", file=sys.stderr)
+            raise SystemExit(1)
+        scripts_dir = str(scripts_path)
+    else:
+        scripts_dir = resolve_scripts_dir(project_root)
     state = read_prerequisite_state(scripts_dir, project_root)
 
     if state == "true":
