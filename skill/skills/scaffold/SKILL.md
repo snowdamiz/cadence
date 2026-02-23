@@ -11,7 +11,7 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
 4. Run `python3 ../../scripts/run-scaffold-gate.py --project-root "$PROJECT_ROOT"` (resolve this relative path from this sub-skill directory) and parse the JSON response.
 5. If the script errors, stop and surface the exact error to the user.
 6. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py --project-root "$PROJECT_ROOT"` and store stdout in `CADENCE_SCRIPTS_DIR`.
-7. Run `python3 "$CADENCE_SCRIPTS_DIR/check-project-repo-status.py" --project-root "$PROJECT_ROOT"` and parse the JSON output.
+7. Run `python3 "$CADENCE_SCRIPTS_DIR/check-project-repo-status.py" --project-root "$PROJECT_ROOT"` and parse the JSON output. Treat `repo_enabled` as the authoritative push mode (`false` means local-only commits).
 8. If `repo_enabled` is false, ask the user: `No GitHub remote is configured yet. Do you want to initialize a GitHub repo now? (yes/no)`.
 9. If the user answers yes:
    - If `git_initialized` is false, run `cd "$PROJECT_ROOT" && git init`.

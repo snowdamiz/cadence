@@ -53,8 +53,9 @@ description: Structured project operating system for end-to-end greenfield or br
 ## Manual Subskill Safety Gate
 1. If the user manually requests a Cadence subskill, first resolve `PROJECT_ROOT` with `python3 scripts/resolve-project-root.py`.
 2. Run `python3 scripts/assert-workflow-route.py --skill-name <subskill> --project-root "$PROJECT_ROOT"` before executing that subskill.
-3. If route assertion fails, stop and surface the exact script error.
-4. Do not execute state-changing subskill steps when assertion fails.
+3. Ensure that direct subskill execution still applies this skill's Repo Status Gate and Git Checkpoints rules.
+4. If route assertion fails, stop and surface the exact script error.
+5. Do not execute state-changing subskill steps when assertion fails.
 
 ## Ideation Flow
 1. When scaffold and prerequisite both complete in this same conversation for a net-new project, hand off to a fresh chat so context resets cleanly.

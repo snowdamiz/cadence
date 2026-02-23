@@ -55,7 +55,8 @@ Per Cadence turn, high-level policy:
 4. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
 5. Use project-progress skill for resume/status intents.
 6. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
-7. For net-new ideation handoff: after scaffold+prereq in-thread, instruct user to start fresh chat for ideation.
+7. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
+8. For net-new ideation handoff: after scaffold+prereq in-thread, instruct user to start fresh chat for ideation.
 
 Design emphasis:
 - deterministic routing
@@ -149,6 +150,7 @@ Finalization behavior:
 - chunk into small commits
 - commit each chunk with compact suffix tags (`[docs]`, `[scripts2/3]`, etc.)
 - push only if `state.repo-enabled=true`; otherwise commit locally (`--skip-push`)
+- apply this same finalization contract for both root-routed subskill runs and direct subskill invocations
 
 Net effect: deterministic, audit-friendly, rollback-safe checkpoints after each successful subskill conversation.
 
