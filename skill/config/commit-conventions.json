@@ -1,0 +1,120 @@
+{
+    "schema_version": 1,
+    "commit_type": "cadence",
+    "subject_max_length": 72,
+    "default_remote": "origin",
+    "atomic": {
+        "max_files_per_commit": 4,
+        "group_order": [
+            "cadence-state",
+            "skill-instructions",
+            "docs",
+            "scripts",
+            "tests",
+            "config",
+            "source"
+        ],
+        "groups": {
+            "cadence-state": {
+                "tag": "state",
+                "label": "cadence state",
+                "patterns": [
+                    ".cadence/**"
+                ]
+            },
+            "skill-instructions": {
+                "tag": "skills",
+                "label": "skill instructions",
+                "patterns": [
+                    "**/SKILL.md",
+                    "**/AGENTS.md"
+                ]
+            },
+            "docs": {
+                "tag": "docs",
+                "label": "documentation",
+                "patterns": [
+                    "docs/**",
+                    "**/*.md"
+                ]
+            },
+            "scripts": {
+                "tag": "scripts",
+                "label": "automation scripts",
+                "patterns": [
+                    "scripts/**",
+                    "**/*.py",
+                    "**/*.sh"
+                ]
+            },
+            "tests": {
+                "tag": "tests",
+                "label": "test updates",
+                "patterns": [
+                    "tests/**",
+                    "**/*test*",
+                    "**/*.spec.*"
+                ]
+            },
+            "config": {
+                "tag": "config",
+                "label": "configuration",
+                "patterns": [
+                    ".gitignore",
+                    "**/.gitignore",
+                    "package.json",
+                    "package-lock.json",
+                    "pnpm-lock.yaml",
+                    "yarn.lock",
+                    "**/*.json",
+                    "**/*.yaml",
+                    "**/*.yml",
+                    "**/*.toml",
+                    "**/*.ini"
+                ]
+            },
+            "source": {
+                "tag": "src",
+                "label": "source changes",
+                "patterns": [
+                    "src/**",
+                    "app/**",
+                    "lib/**"
+                ]
+            }
+        }
+    },
+    "scopes": {
+        "scaffold": {
+            "description": "Scaffold and repository visibility policy",
+            "checkpoints": {
+                "cadence-tracked": "track .cadence and persist scaffold state",
+                "cadence-ignored": "ignore .cadence and persist scaffold state"
+            }
+        },
+        "prerequisite-gate": {
+            "description": "Prerequisite gate state transitions",
+            "checkpoints": {
+                "prerequisites-passed": "persist prerequisite gate pass state"
+            }
+        },
+        "ideator": {
+            "description": "Initial ideation persistence",
+            "checkpoints": {
+                "ideation-completed": "persist finalized ideation"
+            }
+        },
+        "ideation-updater": {
+            "description": "Iterative ideation updates",
+            "checkpoints": {
+                "ideation-updated": "persist ideation updates"
+            }
+        },
+        "project-progress": {
+            "description": "Project progress routing checks",
+            "checkpoints": {
+                "progress-checked": "check progress and route next action"
+            }
+        }
+    }
+}

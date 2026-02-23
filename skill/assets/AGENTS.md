@@ -36,6 +36,10 @@
 - Zero context switching required from the user
 - Go fix failing CI tests without being told how
 
+### 7. User-Facing Hygiene
+- Keep user-facing messages outcome-focused
+- Do not expose internal routing, command traces, terminal transcripts, or timing metadata unless the user explicitly asks
+
 ## Task Management
 
 1. **Plan First**: Write plan to `.cadence/tasks/todo.md` with checkable items

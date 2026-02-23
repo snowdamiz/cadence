@@ -20,7 +20,8 @@ else
     "prerequisites-pass": false,
     "state": {
         "ideation-completed": false,
-        "cadence-scripts-dir": ""
+        "cadence-scripts-dir": "",
+        "repo-enabled": false
     },
     "workflow": {
         "schema_version": 2,

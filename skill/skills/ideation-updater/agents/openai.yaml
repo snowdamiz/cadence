@@ -1,4 +1,4 @@
 interface:
   display_name: "Ideation Updater"
   short_description: "Discuss and update existing project ideation"
-  default_prompt: "Review current project ideation, discuss changes, and persist approved updates. If the user is starting ideation from scratch, route them to a fresh chat with: now make a new chat and say \"help me define my project\" or provide a project brief."
+  default_prompt: "Review current project ideation, discuss changes, and persist approved updates. Keep user-facing responses focused on ideation outcomes and do not expose internal skill-routing or command traces unless the user explicitly asks. If the user is starting ideation from scratch, route them to a fresh chat with: Start a new chat and either say \"help me define my project\" or share your project brief."

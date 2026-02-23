@@ -1,4 +1,4 @@
 interface:
   display_name: "Project Progress"
   short_description: "Read project state and route to the next Cadence phase"
-  default_prompt: "Check .cadence/cadence.json workflow state, report project progress, and if the user asks to continue/resume, automatically route using workflow.next_route from state."
+  default_prompt: "Check .cadence/cadence.json workflow state, report project progress, and if the user asks to continue/resume, automatically route using workflow.next_route from state. Keep responses user-facing: summarize phase progress and next step without exposing raw workflow IDs, route paths, or command traces unless explicitly requested."

@@ -7,10 +7,9 @@ description: Read and route project lifecycle progress from .cadence/cadence.jso
 
 1. Run `python3 ../../scripts/read-workflow-state.py` and parse the JSON response.
 2. Always report current progress first:
-   - active item (id, kind, title)
+   - current phase title
    - completion summary (completed vs total actionable items, percent)
-   - completion percent
-   - next item
+   - what comes next
 3. Interpret user intent:
    - If the user only asks status, answer with progress and stop.
    - If the user asks to continue or resume, answer with progress and then route using `route.skill_path` from script output.
@@ -19,3 +18,6 @@ description: Read and route project lifecycle progress from .cadence/cadence.jso
    - If `route.skill_path` is present, invoke that skill.
    - If no route is present for a non-complete item, ask the user what action they want for that item.
 5. If `read-workflow-state.py` errors, surface the script error verbatim and stop.
+6. At end of this successful skill conversation, run `python3 ../../scripts/finalize-skill-checkpoint.py --scope project-progress --checkpoint progress-checked --paths .`.
+7. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+8. Do not expose raw workflow IDs, route paths, or execution traces in user-facing replies unless the user explicitly asks for internals.

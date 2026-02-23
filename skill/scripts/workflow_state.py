@@ -106,6 +106,7 @@ def default_data() -> dict[str, Any]:
         "state": {
             "ideation-completed": False,
             "cadence-scripts-dir": "",
+            "repo-enabled": False,
         },
         "project-details": {},
         "ideation": {},
@@ -415,6 +416,10 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
         state["ideation-completed"] = False
     if "cadence-scripts-dir" not in state:
         state["cadence-scripts-dir"] = ""
+    if "repo-enabled" not in state:
+        state["repo-enabled"] = False
+    else:
+        state["repo-enabled"] = bool(state.get("repo-enabled", False))
 
     if "prerequisites-pass" not in data:
         data["prerequisites-pass"] = False
