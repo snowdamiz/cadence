@@ -20,11 +20,12 @@ else
     "prerequisites-pass": false,
     "state": {
         "ideation-completed": false,
+        "research-completed": false,
         "cadence-scripts-dir": "",
         "repo-enabled": false
     },
     "workflow": {
-        "schema_version": 2,
+        "schema_version": 3,
         "plan": [
             {
                 "id": "milestone-foundation",
@@ -70,6 +71,16 @@ else
                                             "skill_path": "skills/ideator/SKILL.md",
                                             "reason": "Ideation has not been completed yet."
                                         }
+                                    },
+                                    {
+                                        "id": "task-research",
+                                        "kind": "task",
+                                        "title": "Research ideation agenda",
+                                        "route": {
+                                            "skill_name": "researcher",
+                                            "skill_path": "skills/researcher/SKILL.md",
+                                            "reason": "Ideation research agenda has not been completed yet."
+                                        }
                                     }
                                 ]
                             }
@@ -91,6 +102,30 @@ else
             "blocks": [],
             "entity_registry": [],
             "topic_index": {}
+        },
+        "research_execution": {
+            "version": 1,
+            "status": "pending",
+            "planning": {
+                "target_effort_per_pass": 12,
+                "max_topics_per_pass": 4,
+                "latest_round": 0
+            },
+            "summary": {
+                "topic_total": 0,
+                "topic_complete": 0,
+                "topic_needs_followup": 0,
+                "topic_pending": 0,
+                "pass_pending": 0,
+                "pass_complete": 0,
+                "next_pass_id": ""
+            },
+            "topic_status": {},
+            "pass_queue": [],
+            "pass_history": [],
+            "source_registry": [],
+            "handoff_required": false,
+            "handoff_message": "Start a new chat and say \"continue research\"."
         }
     }
 }

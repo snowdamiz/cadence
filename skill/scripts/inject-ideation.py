@@ -7,7 +7,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ideation_research import ResearchAgendaValidationError, normalize_ideation_research
+from ideation_research import (
+    ResearchAgendaValidationError,
+    normalize_ideation_research,
+    reset_research_execution,
+)
 from workflow_state import default_data, reconcile_workflow_state
 
 
@@ -82,6 +86,7 @@ def parse_payload(args):
 
 def apply_completion_state(data, completion_state):
     state = data.setdefault("state", {})
+    state["research-completed"] = False
     if completion_state == "complete":
         state["ideation-completed"] = True
     elif completion_state == "incomplete":
@@ -136,6 +141,7 @@ def main():
             data.get("ideation", {}),
             require_topics=require_research_topics,
         )
+        data["ideation"] = reset_research_execution(data.get("ideation", {}))
     except ResearchAgendaValidationError as exc:
         print(str(exc), file=sys.stderr)
         return 2

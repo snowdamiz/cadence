@@ -18,6 +18,7 @@ description: Read and route project lifecycle progress from .cadence/cadence.jso
 6. Routing rules:
    - If `next_item.id` is `complete`, explain that all currently tracked workflow items are complete and ask whether they want ideation revisions via `skills/ideation-updater/SKILL.md`.
    - If `route.skill_path` is present, invoke that skill.
+   - If route skill is `researcher`, keep execution to one pass per conversation and follow researcher handoff behavior between passes.
    - If no route is present for a non-complete item, ask the user what action they want for that item.
 7. If `read-workflow-state.py` errors, surface the script error verbatim and stop.
 8. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope project-progress --checkpoint progress-checked --paths .`.

@@ -29,7 +29,7 @@ Top-level:
 
 Install-time payload (what gets copied to user tool skill paths):
 - `skill/SKILL.md` (orchestrator policy)
-- `skill/skills/*` (subskills: scaffold, prerequisite-gate, ideator, ideation-updater, project-progress)
+- `skill/skills/*` (subskills: scaffold, prerequisite-gate, ideator, researcher, ideation-updater, project-progress)
 - `skill/scripts/*` (Python/shell execution engine)
 - `skill/config/commit-conventions.json`
 - `skill/assets/cadence.json` + `skill/assets/AGENTS.md`
@@ -68,16 +68,19 @@ Canonical state file: `.cadence/cadence.json` (inside whichever project root Cad
 Default model includes:
 - `prerequisites-pass` (bool)
 - `state.ideation-completed` (bool)
+- `state.research-completed` (bool)
 - `state.cadence-scripts-dir` (absolute helper script dir path)
 - `state.repo-enabled` (bool; governs push vs local-only checkpoints)
 - `workflow.plan` (nested milestone -> phase -> wave -> task)
 - `project-details` and `ideation` objects
 - `ideation.research_agenda` with normalized research `blocks`, `entity_registry`, and `topic_index` for later-phase deep research routing/querying
+- `ideation.research_execution` with dynamic pass planning/queue, per-topic research status, pass history, and source registry
 
 Current default actionable tasks:
 - `task-scaffold` -> `scaffold`
 - `task-prerequisite-gate` -> `prerequisite-gate`
 - `task-ideation` -> `ideator`
+- `task-research` -> `researcher`
 
 ### 4) Derive + Route Workflow
 `workflow_state.py` is the core state engine:
@@ -87,7 +90,7 @@ Current default actionable tasks:
 - rolls up parent statuses from children
 - computes `workflow.summary`, `next_item`, `next_route`, completion percent
 - maintains legacy compatibility fields (`next_phase`, `active_phase`, etc.)
-- syncs legacy booleans from task status (`prerequisites-pass`, `ideation-completed`)
+- syncs legacy booleans from task status (`prerequisites-pass`, `ideation-completed`, `research-completed`)
 
 `assert-workflow-route.py` blocks out-of-order state-changing subskill calls by checking requested skill against computed `next_route.skill_name`.
 
@@ -95,6 +98,7 @@ Current default actionable tasks:
 - `scaffold`: create `.cadence`, initialize `cadence.json`, persist scripts-dir, configure `.gitignore` track/ignore policy, initialize git/repo mode, checkpoint.
 - `prerequisite-gate`: verify Python availability (`python3`), persist prerequisite pass, checkpoint.
 - `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, and treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
+- `researcher`: execute ideation research agenda in dynamic, bounded one-pass runs; persist findings to `cadence.json`; enforce handoff between passes to reset chat context.
 - `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
 - `project-progress`: read normalized workflow state, report progress, route next action, checkpoint.
 
@@ -120,6 +124,7 @@ Ideation:
 - `ideation_research.py`: shared normalization and validation for ideation research agenda shape and entity/topic/block relationships.
 - `prepare-ideation-research.py`: normalize and validate ideation payload research agenda before injection.
 - `query-ideation-research.py`: granular query surface for `ideation.research_agenda` by block, topic, entity, category, tag, priority, and text.
+- `run-research-pass.py`: dynamic pass planning and per-pass persistence for ideation research execution (start one pass, complete one pass, replan unresolved topics).
 - `inject-ideation.py`: validate/merge/replace ideation payload, enforce research agenda requirements when ideation is complete, route-guard when marking complete, optional payload-file deletion.
 - `get-ideation.py`, `expose-ideation.py`, `render-ideation-summary.py`: machine/human ideation reads and summaries.
 
@@ -132,7 +137,7 @@ Git checkpoints:
 `skill/config/commit-conventions.json` defines:
 - commit type: `cadence`
 - subject max: 72 chars
-- scopes/checkpoints (scaffold, prerequisite-gate, ideator, ideation-updater, project-progress)
+- scopes/checkpoints (scaffold, prerequisite-gate, ideator, researcher, ideation-updater, project-progress)
 - atomic batching constraints:
   - max files per commit (default 4)
   - semantic file groups (`cadence-state`, `skill-instructions`, `docs`, `scripts`, `tests`, `config`, `source`)
@@ -170,7 +175,7 @@ What is strong:
 - installer supports many AI tool ecosystems with one package
 
 What is intentionally narrow right now:
-- default workflow tracks only Foundation setup (scaffold/prereq/ideation)
+- default workflow tracks Foundation setup plus ideation research execution (scaffold/prereq/ideation/research)
 - prerequisite gate currently checks only `python3` presence
 - no in-repo automated test suite for scripts yet
 - this repo ships framework/instructions; project-specific execution happens in downstream repos that install the skill

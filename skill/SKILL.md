@@ -44,7 +44,7 @@ description: Structured project operating system for end-to-end greenfield or br
 
 ## Prerequisite Gate (Conditional)
 1. Invoke `skills/prerequisite-gate/SKILL.md` only when `route.skill_name` is `prerequisite-gate`.
-2. If `route.skill_name` is not `prerequisite-gate` (for example `ideator`), skip prerequisite gate and follow the active route instead.
+2. If `route.skill_name` is not `prerequisite-gate` (for example `ideator` or `researcher`), skip prerequisite gate and follow the active route instead.
 
 ## Progress / Resume Flow
 1. Invoke `skills/project-progress/SKILL.md` when the user asks to continue/resume or requests progress status (for example: "continue the project", "how far along are we?", "where did we leave off?").
@@ -62,6 +62,12 @@ description: Structured project operating system for end-to-end greenfield or br
 3. In subsequent conversations, if the workflow route is `ideator`, do not rerun prerequisite gate.
 4. If the user asks to define the project or provides a brief while route is `ideator`, invoke `skills/ideator/SKILL.md`.
 5. If route is `ideator` and the user has not provided ideation input yet, prompt with the same handoff line and wait.
+
+## Research Flow
+1. If the workflow route is `researcher`, invoke `skills/researcher/SKILL.md`.
+2. Enforce one research pass per conversation so context stays bounded.
+3. When the researcher flow reports additional passes remain, end with the exact handoff line: `Start a new chat and say "continue research".`
+4. Continue routing to researcher on subsequent chats until workflow reports the research task complete.
 
 ## Ideation Update Flow
 1. If the user wants to modify or discuss existing ideation, invoke `skills/ideation-updater/SKILL.md`.

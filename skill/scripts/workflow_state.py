@@ -12,7 +12,7 @@ from typing import Any
 
 from ideation_research import ensure_ideation_research_defaults
 
-WORKFLOW_SCHEMA_VERSION = 2
+WORKFLOW_SCHEMA_VERSION = 3
 VALID_STATUSES = {"pending", "in_progress", "complete", "blocked", "skipped"}
 COMPLETED_STATUSES = {"complete", "skipped"}
 
@@ -32,6 +32,11 @@ DEFAULT_ROUTE_BY_ITEM_ID = {
         "skill_name": "ideator",
         "skill_path": "skills/ideator/SKILL.md",
         "reason": "Ideation has not been completed yet.",
+    },
+    "task-research": {
+        "skill_name": "researcher",
+        "skill_path": "skills/researcher/SKILL.md",
+        "reason": "Ideation research agenda has not been completed yet.",
     },
 }
 
@@ -92,6 +97,12 @@ def default_workflow_plan() -> list[dict[str, Any]]:
                                     "title": "Complete ideation",
                                     "route": DEFAULT_ROUTE_BY_ITEM_ID["task-ideation"],
                                 },
+                                {
+                                    "id": "task-research",
+                                    "kind": "task",
+                                    "title": "Research ideation agenda",
+                                    "route": DEFAULT_ROUTE_BY_ITEM_ID["task-research"],
+                                },
                             ],
                         }
                     ],
@@ -106,6 +117,7 @@ def default_data() -> dict[str, Any]:
         "prerequisites-pass": False,
         "state": {
             "ideation-completed": False,
+            "research-completed": False,
             "cadence-scripts-dir": "",
             "repo-enabled": False,
         },
@@ -180,7 +192,60 @@ def _normalize_item(raw_item: Any, fallback_id: str) -> dict[str, Any]:
 def _normalize_plan(plan: Any) -> list[dict[str, Any]]:
     if not isinstance(plan, list):
         plan = default_workflow_plan()
-    return [_normalize_item(item, f"item-{index + 1}") for index, item in enumerate(plan)]
+    normalized = [_normalize_item(item, f"item-{index + 1}") for index, item in enumerate(plan)]
+    _ensure_research_task(normalized)
+    return normalized
+
+
+def _ensure_research_task(plan: list[dict[str, Any]]) -> None:
+    if _find_item_by_id(plan, "task-research") is not None:
+        return
+
+    research_task = _normalize_item(
+        {
+            "id": "task-research",
+            "kind": "task",
+            "title": "Research ideation agenda",
+            "route": DEFAULT_ROUTE_BY_ITEM_ID["task-research"],
+        },
+        "task-research",
+    )
+
+    def inject_after_ideation(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+
+            for index, child in enumerate(children):
+                if not isinstance(child, dict):
+                    continue
+                if child.get("id") == "task-ideation":
+                    children.insert(index + 1, deepcopy(research_task))
+                    return True
+
+            if inject_after_ideation(children):
+                return True
+        return False
+
+    if inject_after_ideation(plan):
+        return
+
+    # Fallback for custom plans lacking task-ideation; append to the first actionable container.
+    def append_to_first_container(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+            if children and all(isinstance(child, dict) and not child.get("children") for child in children):
+                children.append(deepcopy(research_task))
+                return True
+            if append_to_first_container(children):
+                return True
+        return False
+
+    if not append_to_first_container(plan):
+        plan.append(deepcopy(research_task))
 
 
 def _set_item_status(items: list[dict[str, Any]], item_id: str, status: str) -> bool:
@@ -284,6 +349,7 @@ def _legacy_completion_map(data: dict[str, Any], *, cadence_dir_exists: bool) ->
         "task-scaffold": bool(cadence_dir_exists),
         "task-prerequisite-gate": bool(data.get("prerequisites-pass", False)),
         "task-ideation": bool(state.get("ideation-completed", False)),
+        "task-research": bool(state.get("research-completed", False)),
     }
 
 
@@ -305,11 +371,14 @@ def _sync_legacy_flags_from_plan(data: dict[str, Any], plan: list[dict[str, Any]
 
     prerequisite_item = _find_item_by_id(plan, "task-prerequisite-gate")
     ideation_item = _find_item_by_id(plan, "task-ideation")
+    research_item = _find_item_by_id(plan, "task-research")
 
     if prerequisite_item is not None:
         data["prerequisites-pass"] = _is_complete_status(_coerce_status(prerequisite_item.get("status")))
     if ideation_item is not None:
         state["ideation-completed"] = _is_complete_status(_coerce_status(ideation_item.get("status")))
+    if research_item is not None:
+        state["research-completed"] = _is_complete_status(_coerce_status(research_item.get("status")))
 
 
 def _build_node_ref(node: dict[str, Any]) -> dict[str, Any]:
@@ -415,6 +484,8 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
 
     if "ideation-completed" not in state:
         state["ideation-completed"] = False
+    if "research-completed" not in state:
+        state["research-completed"] = False
     if "cadence-scripts-dir" not in state:
         state["cadence-scripts-dir"] = ""
     if "repo-enabled" not in state:
@@ -424,6 +495,8 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
 
     if "prerequisites-pass" not in data:
         data["prerequisites-pass"] = False
+    if not bool(state.get("ideation-completed", False)):
+        state["research-completed"] = False
     if "project-details" not in data or not isinstance(data.get("project-details"), dict):
         data["project-details"] = {}
     if "ideation" not in data or not isinstance(data.get("ideation"), dict):

@@ -58,6 +58,7 @@ description: Discuss, audit, and update existing project ideation in .cadence/ca
    - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json" --completion-state keep`.
 15. After persistence, confirm result by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/render-ideation-summary.py"`.
 16. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
-17. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
-18. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-19. Ask whether to continue refining another aspect or stop.
+17. Mention that ideation persistence resets research execution so researcher passes can be replanned from the updated agenda.
+18. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideation-updater --checkpoint ideation-updated --paths .`.
+19. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+20. Ask whether to continue refining another aspect or stop.

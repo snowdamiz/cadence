@@ -9,6 +9,10 @@ from typing import Any
 
 RESEARCH_SCHEMA_VERSION = 1
 PRIORITY_LEVELS = {"low", "medium", "high"}
+RESEARCH_EXECUTION_SCHEMA_VERSION = 1
+RESEARCH_EXECUTION_STATUSES = {"pending", "in_progress", "complete"}
+RESEARCH_TOPIC_STATUSES = {"pending", "in_progress", "needs_followup", "complete"}
+DEFAULT_RESEARCH_HANDOFF_MESSAGE = 'Start a new chat and say "continue research".'
 
 
 class ResearchAgendaValidationError(ValueError):
@@ -73,6 +77,269 @@ def default_research_agenda() -> dict[str, Any]:
     }
 
 
+def default_research_execution() -> dict[str, Any]:
+    return {
+        "version": RESEARCH_EXECUTION_SCHEMA_VERSION,
+        "status": "pending",
+        "planning": {
+            "target_effort_per_pass": 12,
+            "max_topics_per_pass": 4,
+            "latest_round": 0,
+        },
+        "summary": {
+            "topic_total": 0,
+            "topic_complete": 0,
+            "topic_needs_followup": 0,
+            "topic_pending": 0,
+            "pass_pending": 0,
+            "pass_complete": 0,
+            "next_pass_id": "",
+        },
+        "topic_status": {},
+        "pass_queue": [],
+        "pass_history": [],
+        "source_registry": [],
+        "handoff_required": False,
+        "handoff_message": DEFAULT_RESEARCH_HANDOFF_MESSAGE,
+    }
+
+
+def _coerce_research_execution_status(value: Any) -> str:
+    status = _string(value, "pending").lower()
+    if status not in RESEARCH_EXECUTION_STATUSES:
+        return "pending"
+    return status
+
+
+def _coerce_research_topic_status(value: Any) -> str:
+    status = _string(value, "pending").lower()
+    if status not in RESEARCH_TOPIC_STATUSES:
+        return "pending"
+    return status
+
+
+def _agenda_topic_index(agenda: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    blocks = agenda.get("blocks")
+    if not isinstance(blocks, list):
+        return {}
+
+    index: dict[str, dict[str, Any]] = {}
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+
+        block_id = _string(block.get("block_id"))
+        block_title = _string(block.get("title"))
+        topics = block.get("topics")
+        if not isinstance(topics, list):
+            continue
+
+        for topic in topics:
+            if not isinstance(topic, dict):
+                continue
+            topic_id = _string(topic.get("topic_id"))
+            if not topic_id:
+                continue
+            index[topic_id] = {
+                "topic_id": topic_id,
+                "title": _string(topic.get("title"), topic_id),
+                "priority": _string(topic.get("priority"), "medium").lower(),
+                "category": _string(topic.get("category"), "general"),
+                "research_questions": _string_list(topic.get("research_questions")),
+                "keywords": _string_list(topic.get("keywords")),
+                "related_entities": _string_list(topic.get("related_entities")),
+                "block_id": block_id,
+                "block_title": block_title,
+            }
+    return index
+
+
+def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) -> dict[str, Any]:
+    topic_index = _agenda_topic_index(agenda)
+    normalized = default_research_execution()
+    if not isinstance(raw_execution, dict):
+        raw_execution = {}
+
+    normalized["status"] = _coerce_research_execution_status(raw_execution.get("status"))
+    normalized["handoff_required"] = bool(raw_execution.get("handoff_required", False))
+    handoff_message = _string(raw_execution.get("handoff_message"), DEFAULT_RESEARCH_HANDOFF_MESSAGE)
+    normalized["handoff_message"] = handoff_message or DEFAULT_RESEARCH_HANDOFF_MESSAGE
+
+    planning = raw_execution.get("planning")
+    planning = dict(planning) if isinstance(planning, dict) else {}
+    try:
+        target_effort = int(planning.get("target_effort_per_pass", 12))
+    except (TypeError, ValueError):
+        target_effort = 12
+    if target_effort < 1:
+        target_effort = 1
+
+    try:
+        max_topics = int(planning.get("max_topics_per_pass", 4))
+    except (TypeError, ValueError):
+        max_topics = 4
+    if max_topics < 1:
+        max_topics = 1
+
+    try:
+        latest_round = int(planning.get("latest_round", 0))
+    except (TypeError, ValueError):
+        latest_round = 0
+    if latest_round < 0:
+        latest_round = 0
+
+    normalized["planning"] = {
+        "target_effort_per_pass": target_effort,
+        "max_topics_per_pass": max_topics,
+        "latest_round": latest_round,
+    }
+
+    raw_topic_status = raw_execution.get("topic_status")
+    raw_topic_status = dict(raw_topic_status) if isinstance(raw_topic_status, dict) else {}
+    topic_status: dict[str, dict[str, Any]] = {}
+    for topic_id, topic_meta in topic_index.items():
+        existing = raw_topic_status.get(topic_id)
+        existing = dict(existing) if isinstance(existing, dict) else {}
+        status = _coerce_research_topic_status(existing.get("status"))
+
+        try:
+            passes_attempted = int(existing.get("passes_attempted", 0))
+        except (TypeError, ValueError):
+            passes_attempted = 0
+        if passes_attempted < 0:
+            passes_attempted = 0
+
+        topic_status[topic_id] = {
+            "topic_id": topic_id,
+            "title": topic_meta["title"],
+            "status": status,
+            "passes_attempted": passes_attempted,
+            "last_pass_id": _string(existing.get("last_pass_id")),
+            "latest_summary": _string(existing.get("latest_summary")),
+            "unresolved_questions": _string_list(existing.get("unresolved_questions")),
+            "source_ids": _string_list(existing.get("source_ids")),
+            "updated_at": _string(existing.get("updated_at")),
+        }
+
+    raw_queue = raw_execution.get("pass_queue")
+    raw_queue = list(raw_queue) if isinstance(raw_queue, list) else []
+    pass_queue: list[dict[str, Any]] = []
+    for entry in raw_queue:
+        if not isinstance(entry, dict):
+            continue
+        pass_id = _string(entry.get("pass_id"))
+        if not pass_id:
+            continue
+        topic_ids = [topic_id for topic_id in _string_list(entry.get("topic_ids")) if topic_id in topic_index]
+        if not topic_ids:
+            continue
+        status = _string(entry.get("status"), "pending").lower()
+        if status not in {"pending", "in_progress"}:
+            status = "pending"
+
+        try:
+            round_number = int(entry.get("round", 0))
+        except (TypeError, ValueError):
+            round_number = 0
+        if round_number < 0:
+            round_number = 0
+
+        try:
+            planned_effort = int(entry.get("planned_effort", 0))
+        except (TypeError, ValueError):
+            planned_effort = 0
+        if planned_effort < 0:
+            planned_effort = 0
+
+        pass_queue.append(
+            {
+                "pass_id": pass_id,
+                "round": round_number,
+                "status": status,
+                "topic_ids": topic_ids,
+                "planned_effort": planned_effort,
+                "created_at": _string(entry.get("created_at")),
+                "started_at": _string(entry.get("started_at")),
+            }
+        )
+
+    raw_history = raw_execution.get("pass_history")
+    raw_history = list(raw_history) if isinstance(raw_history, list) else []
+    pass_history: list[dict[str, Any]] = []
+    for entry in raw_history:
+        if not isinstance(entry, dict):
+            continue
+        pass_id = _string(entry.get("pass_id"))
+        if not pass_id:
+            continue
+        pass_history.append(dict(entry))
+
+    raw_sources = raw_execution.get("source_registry")
+    raw_sources = list(raw_sources) if isinstance(raw_sources, list) else []
+    source_registry: list[dict[str, Any]] = []
+    for source in raw_sources:
+        if not isinstance(source, dict):
+            continue
+        source_id = _string(source.get("source_id"))
+        url = _string(source.get("url"))
+        if not source_id or not url:
+            continue
+        source_registry.append(
+            {
+                "source_id": source_id,
+                "url": url,
+                "title": _string(source.get("title")),
+                "publisher": _string(source.get("publisher")),
+                "published_at": _string(source.get("published_at")),
+                "notes": _string(source.get("notes")),
+                "topic_ids": [topic_id for topic_id in _string_list(source.get("topic_ids")) if topic_id in topic_index],
+                "pass_id": _string(source.get("pass_id")),
+                "captured_at": _string(source.get("captured_at")),
+            }
+        )
+
+    normalized["version"] = RESEARCH_EXECUTION_SCHEMA_VERSION
+    normalized["topic_status"] = topic_status
+    normalized["pass_queue"] = pass_queue
+    normalized["pass_history"] = pass_history
+    normalized["source_registry"] = source_registry
+
+    total_topics = len(topic_status)
+    topic_complete = len([entry for entry in topic_status.values() if entry.get("status") == "complete"])
+    topic_needs_followup = len(
+        [entry for entry in topic_status.values() if entry.get("status") == "needs_followup"]
+    )
+    topic_pending = total_topics - topic_complete - topic_needs_followup
+
+    in_progress_queue = [entry for entry in pass_queue if entry.get("status") == "in_progress"]
+    pending_queue = [entry for entry in pass_queue if entry.get("status") == "pending"]
+    next_pass_id = in_progress_queue[0]["pass_id"] if in_progress_queue else (pending_queue[0]["pass_id"] if pending_queue else "")
+
+    if total_topics == 0:
+        execution_status = "pending"
+    elif topic_complete == total_topics:
+        execution_status = "complete"
+    elif in_progress_queue or pending_queue:
+        execution_status = "in_progress"
+    else:
+        execution_status = "pending"
+
+    normalized["status"] = execution_status
+    if execution_status == "complete":
+        normalized["handoff_required"] = False
+
+    normalized["summary"] = {
+        "topic_total": total_topics,
+        "topic_complete": topic_complete,
+        "topic_needs_followup": topic_needs_followup,
+        "topic_pending": max(topic_pending, 0),
+        "pass_pending": len(pass_queue),
+        "pass_complete": len(pass_history),
+        "next_pass_id": next_pass_id,
+    }
+    return normalized
+
+
 def ensure_ideation_research_defaults(ideation: Any) -> dict[str, Any]:
     if not isinstance(ideation, dict):
         ideation = {}
@@ -80,6 +347,7 @@ def ensure_ideation_research_defaults(ideation: Any) -> dict[str, Any]:
     agenda = ideation.get("research_agenda")
     if not isinstance(agenda, dict):
         ideation["research_agenda"] = default_research_agenda()
+        ideation["research_execution"] = default_research_execution()
         return ideation
 
     normalized = dict(agenda)
@@ -106,7 +374,46 @@ def ensure_ideation_research_defaults(ideation: Any) -> dict[str, Any]:
     normalized["summary"] = summary
 
     ideation["research_agenda"] = normalized
+    ideation["research_execution"] = _normalize_research_execution(
+        normalized,
+        ideation.get("research_execution"),
+    )
     return ideation
+
+
+def reset_research_execution(ideation: Any) -> dict[str, Any]:
+    normalized = ensure_ideation_research_defaults(ideation)
+    agenda = normalized.get("research_agenda")
+    agenda = dict(agenda) if isinstance(agenda, dict) else default_research_agenda()
+
+    topic_index = _agenda_topic_index(agenda)
+    execution = default_research_execution()
+    execution["topic_status"] = {
+        topic_id: {
+            "topic_id": topic_id,
+            "title": topic.get("title", topic_id),
+            "status": "pending",
+            "passes_attempted": 0,
+            "last_pass_id": "",
+            "latest_summary": "",
+            "unresolved_questions": [],
+            "source_ids": [],
+            "updated_at": "",
+        }
+        for topic_id, topic in topic_index.items()
+    }
+    execution["summary"] = {
+        "topic_total": len(topic_index),
+        "topic_complete": 0,
+        "topic_needs_followup": 0,
+        "topic_pending": len(topic_index),
+        "pass_pending": 0,
+        "pass_complete": 0,
+        "next_pass_id": "",
+    }
+
+    normalized["research_execution"] = execution
+    return normalized
 
 
 def _coerce_entity_refs(raw: Any) -> tuple[list[str], dict[str, str]]:
