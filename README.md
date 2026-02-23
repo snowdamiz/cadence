@@ -34,6 +34,20 @@ npx cadence-skill-installer --tools codex,claude,gemini --yes
 - `windsurf`
 - `opencode`
 
+## Release guardrails
+
+This repo enforces release preflight checks through npm lifecycle scripts:
+
+- `preversion`: cleans generated Python artifacts and requires a clean git working tree.
+- `prepack`: removes generated Python artifacts before packaging.
+
+Manual checks:
+
+```bash
+npm run release:preflight
+npm pack --dry-run
+```
+
 ## CI/CD Trusted Publishing (recommended)
 
 This repo includes `/Users/sn0w/Documents/dev/cadence/.github/workflows/publish.yml` for npm trusted publishing (OIDC).

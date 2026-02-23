@@ -12,6 +12,12 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "scripts": {
+    "clean:artifacts": "node scripts/clean-python-artifacts.mjs",
+    "release:preflight": "node scripts/release-preflight.mjs",
+    "prepack": "node scripts/clean-python-artifacts.mjs",
+    "preversion": "node scripts/release-preflight.mjs"
+  },
   "publishConfig": {
     "access": "public"
   },
