@@ -22,7 +22,7 @@ const TOOL_TARGETS = [
   },
   {
     key: "windsurf",
-    label: "Codeium Windsurf",
+    label: "Windsurf",
     relPath: [".codeium", "windsurf", "skills", CADENCE_SKILL_NAME]
   },
   {
@@ -238,16 +238,136 @@ function parseInteractiveSelection(selection, targets) {
   return uniqueIndexes.map((idx) => targets[idx]);
 }
 
-async function chooseTargets(parsed, targets) {
-  if (parsed.all) {
-    return targets;
-  }
+function renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice) {
+  output.write("\x1b[2J\x1b[H");
+  output.write("Select tools to install Cadence skill into (multi-select).\n");
+  output.write("Use arrow keys (or j/k) to move, space to toggle, a to toggle all, enter to confirm, q to cancel.\n\n");
 
-  if (parsed.tools) {
-    const selectedKeys = parseToolKeyList(parsed.tools);
-    return targets.filter((target) => selectedKeys.includes(target.key));
-  }
+  targets.forEach((target, idx) => {
+    const pointer = idx === cursorIndex ? ">" : " ";
+    const checked = selectedIndexes.has(idx) ? "x" : " ";
+    output.write(`${pointer} [${checked}] ${target.label} (${target.targetDir})\n`);
+  });
 
+  output.write(`\nSelected: ${selectedIndexes.size}\n`);
+  if (notice) {
+    output.write(`${notice}\n`);
+  }
+}
+
+function chooseTargetsWithTui(targets) {
+  return new Promise((resolve, reject) => {
+    if (!input.isTTY || !output.isTTY) {
+      reject(new Error("Interactive TUI requires a TTY."));
+      return;
+    }
+
+    let cursorIndex = 0;
+    let notice = "";
+    const selectedIndexes = new Set();
+
+    const cleanup = () => {
+      input.off("data", onData);
+      if (input.isTTY) {
+        input.setRawMode(false);
+      }
+      output.write("\x1b[?25h");
+      output.write("\n");
+    };
+
+    const moveCursor = (delta) => {
+      const length = targets.length;
+      cursorIndex = (cursorIndex + delta + length) % length;
+    };
+
+    const toggleCurrent = () => {
+      if (selectedIndexes.has(cursorIndex)) {
+        selectedIndexes.delete(cursorIndex);
+      } else {
+        selectedIndexes.add(cursorIndex);
+      }
+    };
+
+    const toggleAll = () => {
+      if (selectedIndexes.size === targets.length) {
+        selectedIndexes.clear();
+        return;
+      }
+      for (let idx = 0; idx < targets.length; idx += 1) {
+        selectedIndexes.add(idx);
+      }
+    };
+
+    const finishSelection = () => {
+      if (selectedIndexes.size === 0) {
+        notice = "Select at least one tool before continuing.";
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        return;
+      }
+
+      const orderedIndexes = [...selectedIndexes].sort((a, b) => a - b);
+      const selectedTargets = orderedIndexes.map((idx) => targets[idx]);
+      cleanup();
+      resolve(selectedTargets);
+    };
+
+    const onData = (chunk) => {
+      const key = chunk.toString("utf8");
+
+      if (key === "\u0003") {
+        cleanup();
+        reject(new Error("Cancelled by user."));
+        return;
+      }
+
+      if (key === "\r" || key === "\n") {
+        finishSelection();
+        return;
+      }
+
+      if (key === " " || key === "\u001b[3~") {
+        toggleCurrent();
+        notice = "";
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        return;
+      }
+
+      if (key === "a" || key === "A") {
+        toggleAll();
+        notice = "";
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        return;
+      }
+
+      if (key === "q" || key === "Q") {
+        cleanup();
+        reject(new Error("Cancelled by user."));
+        return;
+      }
+
+      if (key === "\u001b[A" || key === "k" || key === "K") {
+        moveCursor(-1);
+        notice = "";
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        return;
+      }
+
+      if (key === "\u001b[B" || key === "j" || key === "J") {
+        moveCursor(1);
+        notice = "";
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+      }
+    };
+
+    output.write("\x1b[?25l");
+    input.setRawMode(true);
+    input.resume();
+    input.on("data", onData);
+    renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+  });
+}
+
+async function chooseTargetsWithTextPrompt(targets) {
   const rl = readline.createInterface({ input, output });
   try {
     output.write("Select tools to install Cadence skill into (multi-select).\n");
@@ -260,6 +380,23 @@ async function chooseTargets(parsed, targets) {
   } finally {
     rl.close();
   }
+}
+
+async function chooseTargets(parsed, targets) {
+  if (parsed.all) {
+    return targets;
+  }
+
+  if (parsed.tools) {
+    const selectedKeys = parseToolKeyList(parsed.tools);
+    return targets.filter((target) => selectedKeys.includes(target.key));
+  }
+
+  if (input.isTTY && output.isTTY) {
+    return chooseTargetsWithTui(targets);
+  }
+
+  return chooseTargetsWithTextPrompt(targets);
 }
 
 async function copyEntry(srcPath, destPath) {
