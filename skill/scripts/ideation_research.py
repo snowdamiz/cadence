@@ -653,8 +653,20 @@ def normalize_ideation_research(
                 continue
             alias_lookup.setdefault(normalized_alias, set()).add(entity["entity_id"])
 
+    # Track block usage from explicit topic references before alias inference.
+    entity_blocks: dict[str, set[str]] = {}
+    entity_topic_refs: dict[str, list[tuple[str, str]]] = {}
+    for topic_ref in flat_topics:
+        block_id = topic_ref["block_id"]
+        topic_id = _string(topic_ref["topic"].get("topic_id"))
+        for entity_id in topic_ref["topic"]["related_entities"]:
+            entity_blocks.setdefault(entity_id, set()).add(block_id)
+            entity_topic_refs.setdefault(entity_id, []).append((block_id, topic_id))
+
     for topic_ref in flat_topics:
         topic = topic_ref["topic"]
+        topic_block_id = topic_ref["block_id"]
+        topic_id = _string(topic.get("topic_id"))
         haystack = " ".join(
             [
                 _string(topic.get("title")),
@@ -675,14 +687,24 @@ def normalize_ideation_research(
                 detected_ids.append(entity_id)
 
         for entity_id in detected_ids:
-            if entity_id not in topic["related_entities"]:
-                topic["related_entities"].append(entity_id)
+            if entity_id in topic["related_entities"]:
+                continue
 
-    entity_blocks: dict[str, set[str]] = {}
-    for topic_ref in flat_topics:
-        block_id = topic_ref["block_id"]
-        for entity_id in topic_ref["topic"]["related_entities"]:
-            entity_blocks.setdefault(entity_id, set()).add(block_id)
+            entity = entity_index.get(entity_id)
+            if entity is None:
+                continue
+
+            owner_block_id = _string(entity.get("owner_block_id"))
+            referenced_blocks = entity_blocks.get(entity_id, set())
+            # Alias inference is advisory only and must never introduce cross-block links.
+            if owner_block_id and owner_block_id != topic_block_id:
+                continue
+            if referenced_blocks and topic_block_id not in referenced_blocks:
+                continue
+
+            topic["related_entities"].append(entity_id)
+            entity_blocks.setdefault(entity_id, set()).add(topic_block_id)
+            entity_topic_refs.setdefault(entity_id, []).append((topic_block_id, topic_id))
 
     for entity in normalized_entities:
         entity_id = entity["entity_id"]
@@ -690,9 +712,17 @@ def normalize_ideation_research(
         owner_block_id = _string(entity.get("owner_block_id"))
 
         if len(referenced_blocks) > 1:
-            blocks = ", ".join(sorted(referenced_blocks))
+            refs = ", ".join(
+                sorted(
+                    f"{topic_id}@{block_id}"
+                    for block_id, topic_id in entity_topic_refs.get(entity_id, [])
+                    if block_id and topic_id
+                )
+            )
             raise ResearchAgendaValidationError(
-                f"ENTITY_BLOCK_CONFLICT: entity '{entity_id}' is referenced across multiple blocks ({blocks})."
+                f"ENTITY_BLOCK_CONFLICT: entity '{entity_id}' is referenced across multiple blocks "
+                f"({', '.join(sorted(referenced_blocks))})."
+                f"{f' References: {refs}.' if refs else ''}"
             )
 
         if owner_block_id:
@@ -702,9 +732,17 @@ def normalize_ideation_research(
                 )
             if referenced_blocks and owner_block_id not in referenced_blocks:
                 block_label = _ordered_block_choice(referenced_blocks, block_order)
+                refs = ", ".join(
+                    sorted(
+                        f"{topic_id}@{block_id}"
+                        for block_id, topic_id in entity_topic_refs.get(entity_id, [])
+                        if block_id and topic_id
+                    )
+                )
                 raise ResearchAgendaValidationError(
                     f"ENTITY_OWNER_MISMATCH: entity '{entity_id}' owner block '{owner_block_id}' "
                     f"does not match referenced block '{block_label}'."
+                    f"{f' References: {refs}.' if refs else ''}"
                 )
         elif referenced_blocks:
             entity["owner_block_id"] = _ordered_block_choice(referenced_blocks, block_order)
