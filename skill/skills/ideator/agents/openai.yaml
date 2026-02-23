@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ideator"
+  short_description: "Step-by-step domain-agnostic ideation"
+  default_prompt: "Guide the user from a rough concept to a fully defined idea with one question at a time, then persist the final ideation payload."

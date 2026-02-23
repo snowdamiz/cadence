@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cadence"
+  short_description: "Lifecycle + delivery system for structured project execution"
+  default_prompt: "Use Cadence to guide this project from lifecycle setup through phased execution, traceability, audit, and milestone completion. Always read and apply the active SOUL persona from .cadence/SOUL.json (fallback: SOUL.json). If user intent indicates resuming/continuing work (in any natural-language phrasing), run CADENCE progress, determine the active milestone/phase, and continue with the routed workflow while explicitly notifying the user of current location and next step."
