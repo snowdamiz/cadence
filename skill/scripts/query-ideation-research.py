@@ -4,12 +4,27 @@
 from __future__ import annotations
 
 import argparse
+from difflib import SequenceMatcher
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 from ideation_research import ResearchAgendaValidationError, normalize_ideation_research, slugify
+
+FUZZY_TEXT_FIELDS: tuple[str, ...] = (
+    "block.title",
+    "block.rationale",
+    "block.tags",
+    "topic.title",
+    "topic.category",
+    "topic.why_it_matters",
+    "topic.research_questions",
+    "topic.keywords",
+    "topic.tags",
+)
+TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,6 +43,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tag", help="Filter by topic or block tag")
     parser.add_argument("--priority", choices=["high", "medium", "low"], help="Filter by priority")
     parser.add_argument("--text", help="Case-insensitive text search across topic and block fields")
+    parser.add_argument(
+        "--fuzzy-text",
+        action="store_true",
+        help="Enable fuzzy matching for --text instead of strict substring matching",
+    )
+    parser.add_argument(
+        "--fuzzy-threshold",
+        type=float,
+        default=0.72,
+        help="Fuzzy score threshold between 0.0 and 1.0 (default: 0.72)",
+    )
+    parser.add_argument(
+        "--fuzzy-fields",
+        help=(
+            "Comma-separated fuzzy field paths. "
+            f"Supported: {', '.join(FUZZY_TEXT_FIELDS)}. "
+            "If omitted, all supported fields are searched."
+        ),
+    )
     parser.add_argument(
         "--include-related",
         action="store_true",
@@ -54,6 +88,111 @@ def read_payload(path: Path) -> tuple[dict[str, Any], str]:
 
 def _lower(value: Any) -> str:
     return str(value).strip().lower()
+
+
+def _field_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (list, tuple, set)):
+        return " ".join(part for part in (_field_text(item) for item in value) if part)
+    return str(value).strip()
+
+
+def _entry_field_map(entry: dict[str, Any]) -> dict[str, str]:
+    topic = entry.get("topic", {})
+    return {
+        "block.title": _field_text(entry.get("block_title", "")),
+        "block.rationale": _field_text(entry.get("block_rationale", "")),
+        "block.tags": _field_text(entry.get("block_tags", [])),
+        "topic.title": _field_text(topic.get("title", "")),
+        "topic.category": _field_text(topic.get("category", "")),
+        "topic.why_it_matters": _field_text(topic.get("why_it_matters", "")),
+        "topic.research_questions": _field_text(topic.get("research_questions", [])),
+        "topic.keywords": _field_text(topic.get("keywords", [])),
+        "topic.tags": _field_text(topic.get("tags", [])),
+    }
+
+
+def _parse_fuzzy_fields(raw_fields: str | None) -> list[str]:
+    if not raw_fields:
+        return []
+    fields = [value.strip() for value in raw_fields.split(",") if value.strip()]
+    if not fields:
+        raise ValueError("FUZZY_FIELDS_EMPTY")
+
+    invalid_fields = sorted({field for field in fields if field not in FUZZY_TEXT_FIELDS})
+    if invalid_fields:
+        supported = ", ".join(FUZZY_TEXT_FIELDS)
+        invalid = ", ".join(invalid_fields)
+        raise ValueError(f"UNKNOWN_FUZZY_FIELDS: {invalid}. Supported fields: {supported}")
+
+    unique_fields: list[str] = []
+    for field in fields:
+        if field not in unique_fields:
+            unique_fields.append(field)
+    return unique_fields
+
+
+def _tokenize(value: str) -> list[str]:
+    return TOKEN_PATTERN.findall(_lower(value))
+
+
+def _token_overlap_ratio(query: str, candidate: str) -> float:
+    query_tokens = set(_tokenize(query))
+    candidate_tokens = set(_tokenize(candidate))
+    if not query_tokens or not candidate_tokens:
+        return 0.0
+    return len(query_tokens & candidate_tokens) / float(len(query_tokens))
+
+
+def _fuzzy_score(query: str, candidate: str) -> float:
+    query_norm = _lower(query)
+    candidate_norm = _lower(candidate)
+    if not query_norm or not candidate_norm:
+        return 0.0
+    if query_norm in candidate_norm:
+        return 1.0
+
+    best = max(
+        SequenceMatcher(None, query_norm, candidate_norm).ratio(),
+        _token_overlap_ratio(query_norm, candidate_norm),
+    )
+
+    candidate_tokens = _tokenize(candidate_norm)
+    query_token_count = max(1, len(_tokenize(query_norm)))
+    max_span = min(len(candidate_tokens), max(query_token_count + 1, 3))
+    for span in range(1, max_span + 1):
+        for start in range(0, len(candidate_tokens) - span + 1):
+            phrase = " ".join(candidate_tokens[start : start + span])
+            score = SequenceMatcher(None, query_norm, phrase).ratio()
+            if score > best:
+                best = score
+    return best
+
+
+def _fuzzy_text_match(
+    query: str,
+    entry: dict[str, Any],
+    *,
+    threshold: float,
+    fields: list[str],
+) -> tuple[bool, float, list[str]]:
+    field_map = _entry_field_map(entry)
+    target_fields = fields or list(FUZZY_TEXT_FIELDS)
+
+    best_score = 0.0
+    matched_fields: list[str] = []
+    for field in target_fields:
+        candidate = field_map.get(field, "")
+        score = _fuzzy_score(query, candidate)
+        if score > best_score:
+            best_score = score
+        if score >= threshold:
+            matched_fields.append(field)
+
+    return best_score >= threshold, best_score, sorted(set(matched_fields))
 
 
 def _searchable_text(block: dict[str, Any], topic: dict[str, Any]) -> str:
@@ -98,6 +237,21 @@ def _resolve_entity_id(raw_entity: str, entity_registry: list[dict[str, Any]]) -
 def main() -> int:
     args = parse_args()
     payload_path = Path(args.file)
+
+    if not 0.0 <= args.fuzzy_threshold <= 1.0:
+        print("INVALID_FUZZY_THRESHOLD: must be between 0.0 and 1.0", file=sys.stderr)
+        return 2
+    if args.fuzzy_text and not args.text:
+        print("FUZZY_TEXT_REQUIRES_TEXT_FILTER: provide --text when using --fuzzy-text", file=sys.stderr)
+        return 2
+    if args.fuzzy_fields and not args.fuzzy_text:
+        print("FUZZY_FIELDS_REQUIRES_FUZZY_TEXT: use --fuzzy-text with --fuzzy-fields", file=sys.stderr)
+        return 2
+    try:
+        fuzzy_fields = _parse_fuzzy_fields(args.fuzzy_fields)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
     try:
         ideation_payload, source_type = read_payload(payload_path)
@@ -168,6 +322,7 @@ def main() -> int:
             )
 
     matched_topics: list[dict[str, Any]] = []
+    fuzzy_match_meta: dict[str, dict[str, Any]] = {}
     for entry in flat_topics:
         topic = entry["topic"]
         topic_id = str(topic.get("topic_id", "")).strip()
@@ -189,15 +344,29 @@ def main() -> int:
             if tag_value not in topic_tags and tag_value not in block_tags:
                 continue
         if args.text:
-            if _lower(args.text) not in _searchable_text(
-                {
-                    "title": entry["block_title"],
-                    "rationale": entry["block_rationale"],
-                    "tags": entry["block_tags"],
-                },
-                topic,
-            ):
-                continue
+            if args.fuzzy_text:
+                is_match, score, matched_fields = _fuzzy_text_match(
+                    args.text,
+                    entry,
+                    threshold=args.fuzzy_threshold,
+                    fields=fuzzy_fields,
+                )
+                if not is_match:
+                    continue
+                fuzzy_match_meta[topic_id] = {
+                    "score": round(score, 4),
+                    "matched_fields": matched_fields,
+                }
+            else:
+                if _lower(args.text) not in _searchable_text(
+                    {
+                        "title": entry["block_title"],
+                        "rationale": entry["block_rationale"],
+                        "tags": entry["block_tags"],
+                    },
+                    topic,
+                ):
+                    continue
 
         matched_topics.append(entry)
 
@@ -284,6 +453,11 @@ def main() -> int:
                     related_entities.append(entity)
             topic_payload["related_entity_details"] = related_entities
 
+        if args.fuzzy_text and args.text:
+            fuzzy_metadata = fuzzy_match_meta.get(str(topic_payload.get("topic_id", "")).strip())
+            if fuzzy_metadata is not None:
+                topic_payload["fuzzy_match"] = fuzzy_metadata
+
         topics_result.append(topic_payload)
 
     related_payload: dict[str, Any] = {}
@@ -319,6 +493,9 @@ def main() -> int:
             "tag": args.tag or None,
             "priority": args.priority or None,
             "text": args.text or None,
+            "fuzzy_text": bool(args.fuzzy_text),
+            "fuzzy_threshold": args.fuzzy_threshold if args.fuzzy_text else None,
+            "fuzzy_fields": (fuzzy_fields or list(FUZZY_TEXT_FIELDS)) if args.fuzzy_text else None,
             "include_related": bool(args.include_related),
         },
         "summary": {
@@ -332,6 +509,9 @@ def main() -> int:
             "entities": entities_result,
         },
     }
+
+    if args.fuzzy_text and fuzzy_match_meta:
+        response["summary"]["best_fuzzy_score"] = max(meta["score"] for meta in fuzzy_match_meta.values())
 
     if related_payload:
         response["related"] = related_payload
