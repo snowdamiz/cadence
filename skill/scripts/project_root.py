@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -34,9 +35,24 @@ def read_project_root_hint(script_dir: Path) -> Path | None:
         return None
 
     candidate = Path(raw).expanduser().resolve()
-    if (candidate / ".cadence").is_dir():
+    if candidate.is_dir() and (candidate / ".cadence").is_dir():
         return candidate
     return None
+
+
+def read_oldpwd_hint(*, require_cadence: bool = False) -> Path | None:
+    raw = os.environ.get("OLDPWD", "").strip()
+    if not raw:
+        return None
+
+    candidate = Path(raw).expanduser().resolve()
+    if not candidate.exists() or not candidate.is_dir():
+        return None
+
+    if require_cadence and not (candidate / ".cadence").is_dir():
+        return None
+
+    return candidate
 
 
 def find_cadence_project_root(start: Path) -> Path | None:
@@ -59,8 +75,9 @@ def resolve_project_root(
     Resolution order:
     1) Explicit `--project-root`
     2) Nearest ancestor of cwd containing `.cadence`
-    3) Most recent persisted hint (if enabled)
-    4) cwd fallback
+    3) `OLDPWD` when invoked from the skill root (if enabled)
+    4) Most recent persisted hint (if enabled)
+    5) cwd fallback
     """
 
     source = "cwd"
@@ -68,16 +85,30 @@ def resolve_project_root(
         project_root = Path(explicit_project_root).expanduser().resolve()
         source = "explicit"
     else:
-        project_root = find_cadence_project_root(Path.cwd()) or Path.cwd().resolve()
+        cwd = Path.cwd().resolve()
+        project_root = find_cadence_project_root(cwd) or cwd
         if (project_root / ".cadence").is_dir():
             source = "cwd"
         elif allow_hint:
-            hinted_root = read_project_root_hint(script_dir)
-            if hinted_root is not None:
-                project_root = hinted_root
-                source = "hint"
+            if cwd == script_dir.resolve().parent:
+                oldpwd_root = read_oldpwd_hint(require_cadence=require_cadence)
+                if oldpwd_root is not None and oldpwd_root != cwd:
+                    project_root = oldpwd_root
+                    source = "oldpwd"
+                else:
+                    hinted_root = read_project_root_hint(script_dir)
+                    if hinted_root is not None:
+                        project_root = hinted_root
+                        source = "hint"
+                    else:
+                        source = "cwd-fallback"
             else:
-                source = "cwd-fallback"
+                hinted_root = read_project_root_hint(script_dir)
+                if hinted_root is not None:
+                    project_root = hinted_root
+                    source = "hint"
+                else:
+                    source = "cwd-fallback"
         else:
             source = "cwd-fallback"
 

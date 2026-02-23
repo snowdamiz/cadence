@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from project_root import write_project_root_hint
+from project_root import read_oldpwd_hint, resolve_project_root, write_project_root_hint
 from workflow_state import default_data, reconcile_workflow_state
 
 
@@ -36,8 +36,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--project-root",
-        default=".",
-        help="Project root where git and .cadence state should be evaluated.",
+        default="",
+        help="Explicit project root override. If omitted, resolve via Cadence root resolver.",
     )
     parser.add_argument(
         "--set-local-only",
@@ -141,7 +141,34 @@ def ensure_default_state(data: dict[str, Any]) -> dict[str, Any]:
 
 def main() -> int:
     args = parse_args()
-    project_root = Path(args.project_root).resolve()
+    explicit_project_root = args.project_root.strip() or None
+    try:
+        project_root, project_root_source = resolve_project_root(
+            script_dir=SCRIPT_DIR,
+            explicit_project_root=explicit_project_root,
+            require_cadence=False,
+            allow_hint=False,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    if (
+        explicit_project_root is None
+        and project_root_source == "cwd-fallback"
+        and project_root == SCRIPT_DIR.parent
+    ):
+        oldpwd_root = read_oldpwd_hint(require_cadence=False)
+        if oldpwd_root is not None and oldpwd_root != project_root:
+            project_root = oldpwd_root
+            project_root_source = "oldpwd"
+        else:
+            print(
+                "AMBIGUOUS_PROJECT_ROOT: use --project-root when invoking from the Cadence skill directory.",
+                file=sys.stderr,
+            )
+            return 1
+
     write_project_root_hint(SCRIPT_DIR, project_root)
 
     repo_status = detect_git_repo(project_root)
@@ -174,6 +201,7 @@ def main() -> int:
     response = {
         "status": "ok",
         "project_root": str(project_root),
+        "project_root_source": project_root_source,
         "cadence_state_path": str(project_root / CADENCE_JSON_PATH),
         "cadence_state_available": data is not None,
         "state_updated": state_updated,

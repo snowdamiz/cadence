@@ -49,9 +49,9 @@ Installer behavior:
 `skill/SKILL.md` is intentionally an orchestrator; execution is delegated to subskills/scripts.
 
 Per Cadence turn, high-level policy:
-1. Check repo status (`check-project-repo-status.py`) and persist `state.repo-enabled`.
-2. If `.cadence` missing: run scaffold gate.
-3. Read workflow route (`read-workflow-state.py`) and treat `route.skill_name` as authoritative.
+1. Resolve `PROJECT_ROOT` first, then check repo status (`check-project-repo-status.py --project-root "$PROJECT_ROOT"`) and persist `state.repo-enabled`.
+2. If `.cadence` missing under `PROJECT_ROOT`: run scaffold gate.
+3. Read workflow route (`read-workflow-state.py --project-root "$PROJECT_ROOT"`) and treat `route.skill_name` as authoritative.
 4. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
 5. Use project-progress skill for resume/status intents.
 6. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
