@@ -58,16 +58,16 @@ description: Structured project operating system for end-to-end greenfield or br
 5. Do not execute state-changing subskill steps when assertion fails.
 
 ## Ideation Flow
-1. When scaffold and prerequisite both complete in this same conversation for a net-new project, hand off to a fresh chat so context resets cleanly.
-2. Use this exact handoff line: `Start a new chat and either say "help me define my project" or share your project brief.`
-3. In subsequent conversations, if the workflow route is `ideator`, do not rerun prerequisite gate.
-4. If the user asks to define the project or provides a brief while route is `ideator`, invoke `skills/ideator/SKILL.md`.
-5. If route is `ideator` and the user has not provided ideation input yet, prompt with the same handoff line and wait.
+1. When scaffold and prerequisite both complete in this same conversation for a net-new project and route advances to `ideator`, force a subskill handoff and end with this exact line: `Start a new chat and either say "help me define my project" or share your project brief.`
+2. In subsequent conversations, if the workflow route is `ideator`, do not rerun prerequisite gate.
+3. If the user asks to define the project or provides a brief while route is `ideator`, invoke `skills/ideator/SKILL.md`.
+4. If route is `ideator` and the user has not provided ideation input yet, prompt with the same handoff line and wait.
+5. After ideation is completed and workflow advances to `researcher`, force a subskill handoff and end with this exact line: `Start a new chat and say "continue research".`
 
 ## Research Flow
 1. If the workflow route is `researcher`, invoke `skills/researcher/SKILL.md`.
 2. Enforce one research pass per conversation so context stays bounded.
-3. When the researcher flow reports additional passes remain, end with the exact handoff line: `Start a new chat and say "continue research".`
+3. When the researcher flow reports additional passes remain (`handoff_required=true`), end with this exact line: `Start a new chat and say "continue research".`
 4. Continue routing to researcher on subsequent chats until workflow reports the research task complete.
 
 ## Ideation Update Flow

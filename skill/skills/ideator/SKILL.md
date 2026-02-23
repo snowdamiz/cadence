@@ -76,8 +76,9 @@ description: Guide users from a rough concept to a fully defined project idea th
    - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/inject-ideation.py" --file "$PROJECT_ROOT/.cadence/ideation_payload.json" --completion-state complete` (this injects ideation and deletes the payload file on success).
 19. Verify persistence by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
 20. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
-21. Mention that research execution runs in a separate `researcher` phase with one pass per conversation and handoff between passes (`Start a new chat and say "continue research".`).
+21. Mention that research execution runs in a separate `researcher` phase.
 22. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
 23. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 24. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
-25. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
+25. After ideation is completed and checkpointing succeeds, force subskill handoff by ending with this exact line: `Start a new chat and say "continue research".`
+26. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
