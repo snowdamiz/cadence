@@ -405,6 +405,233 @@ def parse_payload(args: argparse.Namespace, project_root: Path) -> dict[str, Any
     return payload
 
 
+def _slug_token(value: Any, fallback: str) -> str:
+    token = re.sub(r"[^a-z0-9]+", "-", str(value).strip().lower()).strip("-")
+    if token:
+        return token
+    fallback_token = re.sub(r"[^a-z0-9]+", "-", str(fallback).strip().lower()).strip("-")
+    return fallback_token or "item"
+
+
+def _coerce_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        raw = list(value)
+    else:
+        raw = [value]
+
+    values: list[str] = []
+    for item in raw:
+        text = str(item).strip()
+        if text and text not in values:
+            values.append(text)
+    return values
+
+
+def _unique_token(seed: str, used: set[str]) -> str:
+    candidate = seed
+    index = 2
+    while candidate in used:
+        candidate = f"{seed}-{index}"
+        index += 1
+    used.add(candidate)
+    return candidate
+
+
+def _normalized_aliases(label: str, aliases: Any) -> list[str]:
+    values = _coerce_text_list(aliases)
+    if label and label not in values:
+        values.insert(0, label)
+    return values
+
+
+def repair_research_entity_links(payload: dict[str, Any]) -> dict[str, Any]:
+    """Auto-repair cross-block entity references to reduce avoidable validation failures."""
+
+    repairs: dict[str, Any] = {
+        "applied": False,
+        "generated_block_ids": 0,
+        "created_entities": 0,
+        "owner_assignments": 0,
+        "cross_block_relinks": 0,
+        "unknown_owner_resets": 0,
+    }
+
+    agenda = payload.get("research_agenda")
+    if not isinstance(agenda, dict):
+        return repairs
+
+    blocks = agenda.get("blocks")
+    if not isinstance(blocks, list):
+        return repairs
+
+    block_ids: list[str] = []
+    for index, block in enumerate(blocks, start=1):
+        if not isinstance(block, dict):
+            continue
+        block_id = str(block.get("block_id", "")).strip()
+        if not block_id:
+            block_id = f"block-{index}"
+            block["block_id"] = block_id
+            repairs["generated_block_ids"] += 1
+        block_ids.append(block_id)
+
+    if not block_ids:
+        return repairs
+
+    block_id_set = set(block_ids)
+    entity_registry_raw = agenda.get("entity_registry")
+    entity_registry_raw = entity_registry_raw if isinstance(entity_registry_raw, list) else []
+
+    used_entity_ids: set[str] = set()
+    entity_index: dict[str, dict[str, Any]] = {}
+    entity_order: list[str] = []
+
+    for index, raw_entry in enumerate(entity_registry_raw, start=1):
+        entry = dict(raw_entry) if isinstance(raw_entry, dict) else {"label": raw_entry}
+        label = str(entry.get("label") or entry.get("name") or entry.get("entity_id") or entry.get("id") or "").strip()
+        seed = _slug_token(entry.get("entity_id") or entry.get("id") or label, f"entity-{index}")
+        owner_block_id = str(entry.get("owner_block_id") or entry.get("owner") or "").strip()
+        kind = str(entry.get("kind") or entry.get("type") or "entity").strip() or "entity"
+        aliases = _normalized_aliases(label, entry.get("aliases"))
+
+        if seed in entity_index:
+            existing = entity_index[seed]
+            existing_owner = str(existing.get("owner_block_id", "")).strip()
+            if owner_block_id and existing_owner and owner_block_id != existing_owner:
+                seed = _unique_token(
+                    f"{seed}--{_slug_token(owner_block_id, 'block')}",
+                    used_entity_ids,
+                )
+            else:
+                if not existing_owner and owner_block_id:
+                    existing["owner_block_id"] = owner_block_id
+                for alias in aliases:
+                    if alias not in existing["aliases"]:
+                        existing["aliases"].append(alias)
+                continue
+        else:
+            seed = _unique_token(seed, used_entity_ids)
+
+        entity = {
+            "entity_id": seed,
+            "label": label or seed.replace("-", " ").title(),
+            "kind": kind,
+            "aliases": aliases,
+            "owner_block_id": owner_block_id,
+        }
+        entity_index[seed] = entity
+        entity_order.append(seed)
+
+    clone_cache: dict[tuple[str, str], str] = {}
+    synthetic_index = 0
+
+    for block_index, block in enumerate(blocks, start=1):
+        if not isinstance(block, dict):
+            continue
+        block_id = str(block.get("block_id") or f"block-{block_index}").strip()
+        topics = block.get("topics")
+        topics = topics if isinstance(topics, list) else []
+
+        for topic in topics:
+            if not isinstance(topic, dict):
+                continue
+
+            related_raw = topic.get("related_entities")
+            related_entities = _coerce_text_list(related_raw)
+            if not related_entities:
+                topic["related_entities"] = []
+                continue
+
+            repaired_related: list[str] = []
+            for raw_entity in related_entities:
+                entity_seed = _slug_token(raw_entity, "entity")
+                entity_id = entity_seed
+
+                if entity_id not in entity_index:
+                    synthetic_index += 1
+                    if entity_id in used_entity_ids:
+                        entity_id = _unique_token(f"{entity_seed}-{synthetic_index}", used_entity_ids)
+                    else:
+                        used_entity_ids.add(entity_id)
+                    label = str(raw_entity).strip() or entity_id.replace("-", " ").title()
+                    entity_index[entity_id] = {
+                        "entity_id": entity_id,
+                        "label": label,
+                        "kind": "entity",
+                        "aliases": [label] if label else [],
+                        "owner_block_id": block_id,
+                    }
+                    entity_order.append(entity_id)
+                    repairs["created_entities"] += 1
+                    repairs["owner_assignments"] += 1
+
+                entity = entity_index[entity_id]
+                owner_block_id = str(entity.get("owner_block_id", "")).strip()
+
+                if owner_block_id and owner_block_id != block_id:
+                    cache_key = (entity_id, block_id)
+                    clone_id = clone_cache.get(cache_key, "")
+                    if not clone_id:
+                        clone_id = _unique_token(
+                            f"{entity_id}--{_slug_token(block_id, 'block')}",
+                            used_entity_ids,
+                        )
+                        clone = dict(entity)
+                        clone["entity_id"] = clone_id
+                        clone["owner_block_id"] = block_id
+                        clone["aliases"] = _normalized_aliases(
+                            str(clone.get("label", "")).strip(),
+                            clone.get("aliases"),
+                        )
+                        entity_index[clone_id] = clone
+                        entity_order.append(clone_id)
+                        clone_cache[cache_key] = clone_id
+                        repairs["created_entities"] += 1
+                    repaired_related.append(clone_id)
+                    repairs["cross_block_relinks"] += 1
+                    continue
+
+                if not owner_block_id:
+                    entity["owner_block_id"] = block_id
+                    repairs["owner_assignments"] += 1
+
+                repaired_related.append(entity_id)
+
+            deduped_related: list[str] = []
+            for entity_id in repaired_related:
+                if entity_id not in deduped_related:
+                    deduped_related.append(entity_id)
+            topic["related_entities"] = deduped_related
+
+    for entity_id in entity_order:
+        entity = entity_index.get(entity_id)
+        if not isinstance(entity, dict):
+            continue
+        owner_block_id = str(entity.get("owner_block_id", "")).strip()
+        if owner_block_id and owner_block_id not in block_id_set:
+            entity["owner_block_id"] = ""
+            repairs["unknown_owner_resets"] += 1
+        entity["aliases"] = _normalized_aliases(str(entity.get("label", "")).strip(), entity.get("aliases"))
+        entity["kind"] = str(entity.get("kind", "")).strip() or "entity"
+
+    agenda["entity_registry"] = [entity_index[entity_id] for entity_id in entity_order]
+    payload["research_agenda"] = agenda
+
+    repairs["applied"] = any(
+        int(repairs[key]) > 0
+        for key in (
+            "generated_block_ids",
+            "created_entities",
+            "owner_assignments",
+            "cross_block_relinks",
+            "unknown_owner_resets",
+        )
+    )
+    return repairs
+
+
 def ensure_brownfield_mode(data: dict[str, Any]) -> None:
     state = data.get("state")
     state = state if isinstance(state, dict) else {}
@@ -416,6 +643,7 @@ def ensure_brownfield_mode(data: dict[str, Any]) -> None:
 def complete_flow(args: argparse.Namespace, project_root: Path, data: dict[str, Any]) -> dict[str, Any]:
     ensure_brownfield_mode(data)
     payload = parse_payload(args, project_root)
+    repair_summary = repair_research_entity_links(payload)
     normalized = normalize_ideation_research(payload, require_topics=True)
     normalized = reset_research_execution(normalized)
     data["ideation"] = normalized
@@ -474,6 +702,7 @@ def complete_flow(args: argparse.Namespace, project_root: Path, data: dict[str, 
             "topic_count": int(summary.get("topic_count", 0)),
             "entity_count": int(summary.get("entity_count", 0)),
         },
+        "payload_repairs": repair_summary,
         "next_route": data.get("workflow", {}).get("next_route", {}),
     }
 

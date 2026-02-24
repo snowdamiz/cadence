@@ -40,6 +40,7 @@
 ### 7. User-Facing Hygiene
 - Keep user-facing messages outcome-focused
 - Do not expose internal routing, command traces, terminal transcripts, or timing metadata unless the user explicitly asks
+- Never manually edit `.cadence/cadence.json`; use Cadence scripts for all state updates
 
 ## Task Management
 
@@ -55,3 +56,4 @@
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+- **Script-Only State Writes**: `.cadence/cadence.json` must only be changed via existing Cadence scripts.

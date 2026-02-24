@@ -1,4 +1,12 @@
 interface:
   display_name: "Prerequisite Gate"
   short_description: "Run and persist Cadence prerequisite checks for Python availability"
-  default_prompt: "Run Cadence prerequisite checks, verify Python availability, and persist pass state before lifecycle or delivery execution. Resolve PROJECT_ROOT first with scripts/resolve-project-root.py --require-cadence, then resolve CADENCE_SCRIPTS_DIR with scripts/resolve-project-scripts-dir.py --project-root \"$PROJECT_ROOT\". Run scripts/check-project-repo-status.py --project-root \"$PROJECT_ROOT\" and treat repo_enabled as the authoritative push mode (false means local-only commits). Run scripts/run-prerequisite-gate.py --project-root \"$PROJECT_ROOT\" --scripts-dir \"$CADENCE_SCRIPTS_DIR\" (this command performs route assertion internally) and stop on mismatch. Execute checkpoint commit commands from PROJECT_ROOT so git operations target the active project. At end of a successful prerequisite conversation, run scripts/finalize-skill-checkpoint.py from PROJECT_ROOT with --scope prerequisite-gate --checkpoint prerequisites-passed --paths .; allow status=no_changes and treat checkpoint or push failures as blocking errors surfaced verbatim. Keep user-facing messages focused on prerequisite outcomes and avoid internal command/routing traces unless explicitly requested."
+  default_prompt: >-
+    Follow skills/prerequisite-gate/SKILL.md for exact gate behavior.
+    Run scripts/run-skill-entry-gate.py --require-cadence, then use its JSON output for PROJECT_ROOT
+    (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode (repo_enabled).
+    Never edit .cadence/cadence.json manually.
+    Run scripts/run-prerequisite-gate.py --project-root "$PROJECT_ROOT" --scripts-dir "$CADENCE_SCRIPTS_DIR".
+    Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope prerequisite-gate
+    --checkpoint prerequisites-passed --paths . (allow status=no_changes; treat failures as blocking).
+    Keep replies focused on prerequisite outcomes and hide internal traces unless asked.

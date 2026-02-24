@@ -1,4 +1,16 @@
 interface:
   display_name: "Ideator"
   short_description: "Step-by-step domain-agnostic ideation"
-  default_prompt: "Guide the user from a rough concept or provided project brief to a fully defined idea. On ideator entry, resolve PROJECT_ROOT with scripts/resolve-project-root.py --require-cadence, then resolve CADENCE_SCRIPTS_DIR with scripts/resolve-project-scripts-dir.py --project-root \"$PROJECT_ROOT\". Run scripts/check-project-repo-status.py --project-root \"$PROJECT_ROOT\" and treat repo_enabled as the authoritative push mode (false means local-only commits). Before ideation steps, assert route with scripts/assert-workflow-route.py --skill-name ideator --project-root \"$PROJECT_ROOT\" and stop on mismatch. Do not rerun those gate scripts between normal ideation question/answer turns in the same conversation. Execute state-changing ideation persistence commands from PROJECT_ROOT so .cadence writes and checkpoint commits target the correct project. Ask one follow-up question at a time for missing critical details, then produce a complete domain-agnostic research agenda inferred from the ideation discussion with blocks, topics, and entity relationships. Use the canonical ideation payload contract documented in this skill (including objective/core_outcome/in_scope/out_of_scope plus research_agenda blocks/entity_registry/topic_index) and do not read script sources just to infer payload shape. Immediately before persistence, rerun scripts/assert-workflow-route.py --skill-name ideator --project-root \"$PROJECT_ROOT\", then run scripts/prepare-ideation-research.py to normalize and validate the research agenda, then inject via scripts/inject-ideation.py. At end of a successful ideator conversation, run scripts/finalize-skill-checkpoint.py from PROJECT_ROOT with --scope ideator --checkpoint ideation-completed --paths .; allow status=no_changes and treat checkpoint or push failures as blocking errors surfaced verbatim. End successful ideation completion replies with this exact line: Start a new chat with a new agent and say \"plan my project\". Keep user-facing responses focused on ideation outcomes and do not expose internal skill-routing or command traces unless explicitly requested."
+  default_prompt: >-
+    Follow skills/ideator/SKILL.md and its ideation payload contract.
+    On entry, run scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name ideator, then use its JSON
+    output for PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode
+    (repo_enabled).
+    Never edit .cadence/cadence.json manually.
+    Ask one question at a time, build an execution-ready ideation object and complete research_agenda,
+    then from PROJECT_ROOT rerun route assertion, run scripts/prepare-ideation-research.py,
+    and persist with scripts/inject-ideation.py.
+    End successful completion with: Start a new chat with a new agent and say "plan my project".
+    Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope ideator
+    --checkpoint ideation-completed --paths . (allow status=no_changes; treat failures as blocking).
+    Keep replies focused on ideation outcomes and hide internal traces unless asked.

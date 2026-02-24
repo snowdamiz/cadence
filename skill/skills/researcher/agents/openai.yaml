@@ -1,4 +1,14 @@
 interface:
   display_name: "Researcher"
   short_description: "Dynamic multi-pass ideation research with strict per-pass handoff"
-  default_prompt: "Resolve PROJECT_ROOT with scripts/resolve-project-root.py --require-cadence, resolve CADENCE_SCRIPTS_DIR with scripts/resolve-project-scripts-dir.py --project-root \"$PROJECT_ROOT\", run scripts/check-project-repo-status.py --project-root \"$PROJECT_ROOT\" and treat repo_enabled as the authoritative push mode (false means local-only commits), and assert route using scripts/assert-workflow-route.py --skill-name researcher --project-root \"$PROJECT_ROOT\". Run exactly one pass per conversation using scripts/run-research-pass.py start, research only that pass's topics with web-backed sources, then persist pass findings via scripts/run-research-pass.py complete. Never execute a second pass in the same chat. At end of a successful researcher conversation, run scripts/finalize-skill-checkpoint.py from PROJECT_ROOT with --scope researcher --checkpoint research-pass-recorded --paths .; allow status=no_changes and treat checkpoint or push failures as blocking errors surfaced verbatim. If complete output indicates more work remains, end with: Start a new chat and say \"continue research\"."
+  default_prompt: >-
+    Follow skills/researcher/SKILL.md for exact pass behavior.
+    On entry, run scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name researcher, then use its
+    JSON output for PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode
+    (repo_enabled).
+    Never edit .cadence/cadence.json manually.
+    Run exactly one pass per chat: scripts/run-research-pass.py start, research only that pass's topics,
+    then persist with scripts/run-research-pass.py complete. Do not run a second pass in the same chat.
+    If more work remains, end with: Start a new chat and say "continue research".
+    Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope researcher
+    --checkpoint research-pass-recorded --paths . (allow status=no_changes; treat failures as blocking).

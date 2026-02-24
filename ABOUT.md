@@ -1,7 +1,7 @@
 # ABOUT: Cadence
 
 ## What This Project Is
-Cadence is an **installable AI skill system** (published as `cadence-skill-installer`) that adds a deterministic, stateful project workflow to multiple AI tools (Codex, Claude, Gemini, Copilot variants, Windsurf, OpenCode).  
+Cadence is an **installable AI skill system** (published as `cadence-skill-installer`) that adds a deterministic, stateful project workflow to multiple AI tools (Codex, Agents, Claude, Gemini, Copilot, GitHub Copilot, Windsurf, OpenCode).  
 This repo is **not** an app/product runtime; it is a packaged skill + script toolkit.
 
 Core idea: turn ad-hoc assistant behavior into a repeatable project operating system with:
@@ -23,9 +23,10 @@ Cadence solves this by making workflow state first-class and script-enforced.
 ## Repository Shape
 Top-level:
 - `/Users/sn0w/Documents/dev/cadence/scripts/install-cadence-skill.mjs`: npm CLI installer that copies `skill/` into tool-specific skill dirs.
+- `/Users/sn0w/Documents/dev/cadence/scripts/clean-python-artifacts.mjs` + `/Users/sn0w/Documents/dev/cadence/scripts/release-preflight.mjs`: release hygiene scripts used by `prepack`/`preversion`.
 - `/Users/sn0w/Documents/dev/cadence/skill/`: actual Cadence skill package.
 - `/Users/sn0w/Documents/dev/cadence/.github/workflows/publish.yml`: npm publish via GitHub Actions + OIDC trusted publishing.
-- `/Users/sn0w/Documents/dev/cadence/package.json`: package metadata (`name: cadence-skill-installer`, `version: 0.2.25`, `type: module`, Node `>=18`).
+- `/Users/sn0w/Documents/dev/cadence/package.json`: package metadata (`name: cadence-skill-installer`, `version: 0.2.30`, `type: module`, Node `>=18`, bins: `cadence-skill-installer` + `cadence-install`).
 
 Install-time payload (what gets copied to user tool skill paths):
 - `skill/SKILL.md` (orchestrator policy)
@@ -34,7 +35,7 @@ Install-time payload (what gets copied to user tool skill paths):
 - `skill/config/commit-conventions.json`
 - `skill/assets/cadence.json` + `skill/assets/AGENTS.md`
 
-`npm pack --dry-run` shows ~36 files, ~124.7 kB unpacked.
+`npm pack --dry-run` currently shows 62 files, ~399.6 kB unpacked (~76.9 kB tarball).
 
 ## Operational Model (How It Works)
 ### 1) Install
@@ -49,17 +50,18 @@ Installer behavior:
 `skill/SKILL.md` is intentionally an orchestrator; execution is delegated to subskills/scripts.
 
 Per Cadence turn, high-level policy:
-1. Resolve `PROJECT_ROOT` first, then check repo status (`check-project-repo-status.py --project-root "$PROJECT_ROOT"`) and persist `state.repo-enabled`.
-2. If `.cadence` missing under `PROJECT_ROOT`: run scaffold gate.
-3. Read workflow route (`read-workflow-state.py --project-root "$PROJECT_ROOT"`) and treat `route.skill_name` as authoritative.
-4. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
-5. Run project mode intake when route points to `brownfield-intake` to classify greenfield vs brownfield and capture existing-code baseline.
-6. Use project-progress skill for resume/status intents.
-6. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
-7. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
-8. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
-9. For brownfield repositories: after intake, route to `brownfield-documenter` (not `ideator`) and force a new-chat handoff before documentation.
-10. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "plan my project".`).
+1. Resolve `PROJECT_ROOT` first.
+2. If `.cadence` already exists, run repo status (`check-project-repo-status.py --project-root "$PROJECT_ROOT"`) and persist `state.repo-enabled`; if `.cadence` is missing, skip this check until scaffold initializes state.
+3. If `.cadence` or `.cadence/cadence.json` is missing: run scaffold gate.
+4. Read workflow route (`read-workflow-state.py --project-root "$PROJECT_ROOT"`) and treat `route.skill_name` as authoritative.
+5. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
+6. Run project mode intake when route points to `brownfield-intake` to classify greenfield vs brownfield and capture existing-code baseline.
+7. Use project-progress skill for resume/status intents.
+8. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
+9. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
+10. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
+11. For brownfield repositories: after intake, route to `brownfield-documenter` (not `ideator`) and force a new-chat handoff before documentation.
+12. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "plan my project".`).
 
 Design emphasis:
 - deterministic routing
@@ -75,8 +77,11 @@ Default model includes:
 - `state.research-completed` (bool)
 - `state.cadence-scripts-dir` (absolute helper script dir path)
 - `state.repo-enabled` (bool; governs push vs local-only checkpoints)
+- `state.project-mode` (`unknown|greenfield|brownfield`)
+- `state.brownfield-intake-completed` (bool)
+- `state.brownfield-documentation-completed` (bool)
 - `workflow.plan` (nested milestone -> phase -> wave -> task)
-- `project-details` and `ideation` objects
+- `project-details.mode`, `project-details.brownfield_baseline`, and `ideation` objects
 - `ideation.research_agenda` with normalized research `blocks`, `entity_registry`, and `topic_index` for later-phase deep research routing/querying
 - `ideation.research_execution` with dynamic pass planning/queue, per-topic research status, pass history, and source registry
 
@@ -88,6 +93,10 @@ Current default actionable tasks:
 - `task-ideation` -> `ideator`
 - `task-research` -> `researcher`
 
+Mode-based task override:
+- `greenfield` marks `task-brownfield-documentation` as `skipped`
+- `brownfield` marks `task-ideation` as `skipped`
+
 ### 4) Derive + Route Workflow
 `workflow_state.py` is the core state engine:
 - normalizes malformed/missing fields
@@ -96,7 +105,8 @@ Current default actionable tasks:
 - rolls up parent statuses from children
 - computes `workflow.summary`, `next_item`, `next_route`, completion percent
 - maintains legacy compatibility fields (`next_phase`, `active_phase`, etc.)
-- syncs legacy booleans from task status (`prerequisites-pass`, `ideation-completed`, `research-completed`)
+- syncs legacy booleans from task status (`prerequisites-pass`, `ideation-completed`, `research-completed`, `brownfield-intake-completed`, `brownfield-documentation-completed`)
+- applies project-mode-aware task status overrides for greenfield vs brownfield routing
 
 `assert-workflow-route.py` blocks out-of-order state-changing subskill calls by checking requested skill against computed `next_route.skill_name`.
 
@@ -118,7 +128,9 @@ Workflow/state:
 - `read-workflow-state.py`: load/reconcile/persist normalized state and emit route payload.
 - `set-workflow-item-status.py`: set item status and recalculate all derived fields.
 - `assert-workflow-route.py`: enforce legal skill transitions.
+- `run-skill-entry-gate.py`: shared subskill preflight wrapper for root/scripts-dir/repo-status plus optional route/workflow checks.
 - `resolve-project-root.py` + `project_root.py`: resolve active project root (cwd, explicit, or cached hint) so subskills can target the correct repo across chats.
+- `query-json-fuzzy.py`: generic fuzzy JSON query helper used by supporting flows.
 
 Scaffold/prereq:
 - `scaffold-project.sh`: idempotent `.cadence` bootstrap (uses template fallback JSON).
@@ -176,7 +188,7 @@ Cadence instructions consistently require:
 - npm publish workflow triggers on `workflow_dispatch` or tag `v*`.
 - Uses `actions/setup-node@v4` with Node 24.
 - Publishes public package; uses `--provenance` for non-private repos.
-- Repo history is release-driven (`v0.1.x` -> `v0.2.25`), with recent work focused on installer UX and safer routing.
+- Repo history is release-driven (`v0.1.x` -> `v0.2.30`), with recent work focused on installer UX, brownfield routing/documentation, and safer workflow state handling.
 
 ## Practical Read of Maturity
 What is strong:
@@ -188,7 +200,7 @@ What is strong:
 What is intentionally narrow right now:
 - default workflow tracks Foundation setup plus project mode intake, brownfield documentation, and ideation research execution (scaffold/prereq/intake/brownfield-doc-or-ideation/research)
 - prerequisite gate currently checks only `python3` presence
-- in-repo automated tests cover ideation normalization, workflow state transitions, route assertions, checkpoint batching, and research-pass payload validation
+- in-repo automated tests cover shared entry gate preflight behavior, repo status detection, workflow state transitions, route assertions, checkpoint batching, brownfield intake/documentation flows, and research-pass payload validation
 - this repo ships framework/instructions; project-specific execution happens in downstream repos that install the skill
 
 ## Minimal Mental Model

@@ -17,6 +17,12 @@ description: Structured project operating system for end-to-end greenfield or br
    - raw commands, terminal traces, or timing metadata
 3. When internal gates/checks succeed, continue directly with the user task and do not announce that checks were run.
 
+## State Mutation Safety
+1. Never manually edit `.cadence/cadence.json`.
+2. Mutate Cadence state only through the provided Cadence scripts (for example `run-*-gate.py`, `inject-ideation.py`, `run-brownfield-documentation.py`, `run-research-pass.py`, `set-workflow-item-status.py`, `read-workflow-state.py`).
+3. If a required state transition is not supported by existing scripts, stop and update scripts first instead of writing JSON by hand.
+4. For subskill preflight setup (project root + scripts-dir + repo-status, with optional route/workflow checks), use `scripts/run-skill-entry-gate.py` instead of repeating command chains.
+
 ## Repo Status Gate
 1. At Cadence entry (first assistant response in the conversation), resolve `PROJECT_ROOT` with `python3 scripts/resolve-project-root.py --project-root "$PWD"` (resolve script paths from this skill directory but keep command cwd at the active project).
 2. If `"$PROJECT_ROOT/.cadence"` exists, run `python3 scripts/check-project-repo-status.py --project-root "$PROJECT_ROOT"`.

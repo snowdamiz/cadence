@@ -1,4 +1,15 @@
 interface:
   display_name: "Project Progress"
   short_description: "Read project state and route to the next Cadence phase"
-  default_prompt: "Resolve PROJECT_ROOT first with scripts/resolve-project-root.py --require-cadence, then resolve CADENCE_SCRIPTS_DIR with scripts/resolve-project-scripts-dir.py --project-root \"$PROJECT_ROOT\". Run scripts/check-project-repo-status.py --project-root \"$PROJECT_ROOT\" and treat repo_enabled as the authoritative push mode (false means local-only commits). Read workflow state using scripts/read-workflow-state.py --project-root \"$PROJECT_ROOT\", report project progress, and if the user asks to continue/resume, automatically route using workflow.next_route from state. If the next route is researcher, continue with one-pass-per-chat behavior and the handoff line: Start a new chat and say \"continue research\" when additional passes remain. Run checkpoint commits from PROJECT_ROOT so git operations target the active project. At end of a successful project-progress conversation, run scripts/finalize-skill-checkpoint.py from PROJECT_ROOT with --scope project-progress --checkpoint progress-checked --paths .; allow status=no_changes and treat checkpoint or push failures as blocking errors surfaced verbatim. Keep responses user-facing: summarize phase progress and next step without exposing raw workflow IDs, route paths, or command traces unless explicitly requested."
+  default_prompt: >-
+    Follow skills/project-progress/SKILL.md for exact routing behavior.
+    Run scripts/run-skill-entry-gate.py --require-cadence --include-workflow-state, then use its JSON output for
+    PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), push/local-only mode (repo_enabled),
+    and workflow payload (workflow_state).
+    Never edit .cadence/cadence.json manually.
+    Summarize progress in user-facing terms and for continue/resume requests route via workflow_state.route.
+    If routed to researcher and more passes remain, use:
+    Start a new chat and say "continue research".
+    Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope project-progress
+    --checkpoint progress-checked --paths . (allow status=no_changes; treat failures as blocking).
+    Keep replies concise and hide internal traces unless asked.
