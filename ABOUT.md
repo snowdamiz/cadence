@@ -26,7 +26,7 @@ Top-level:
 - `/Users/sn0w/Documents/dev/cadence/scripts/clean-python-artifacts.mjs` + `/Users/sn0w/Documents/dev/cadence/scripts/release-preflight.mjs`: release hygiene scripts used by `prepack`/`preversion`.
 - `/Users/sn0w/Documents/dev/cadence/skill/`: actual Cadence skill package.
 - `/Users/sn0w/Documents/dev/cadence/.github/workflows/publish.yml`: npm publish via GitHub Actions + OIDC trusted publishing.
-- `/Users/sn0w/Documents/dev/cadence/package.json`: package metadata (`name: cadence-skill-installer`, `version: 0.2.30`, `type: module`, Node `>=18`, bins: `cadence-skill-installer` + `cadence-install`).
+- `/Users/sn0w/Documents/dev/cadence/package.json`: package metadata (`name: cadence-skill-installer`, `version: 0.2.35`, `type: module`, Node `>=18`, bins: `cadence-skill-installer` + `cadence-install`).
 
 Install-time payload (what gets copied to user tool skill paths):
 - `skill/SKILL.md` (orchestrator policy)
@@ -148,6 +148,11 @@ Scaffold/prereq:
 - `resolve-project-scripts-dir.py` + `init-cadence-scripts-dir.py`: self-heal script path state.
 - `configure-cadence-gitignore.py`: `.cadence` track/ignore policy updates.
 
+Canonical invocation contracts (to avoid argument mismatch):
+- `resolve-project-root.py`: always pass `--project-root "$PWD"` at entry so resolution is deterministic.
+- `configure-cadence-gitignore.py`: accepts `--mode` and optional `--gitignore-path`; it does **not** accept `--project-root`.
+- `finalize-skill-checkpoint.py`: accepts `--project-root`; pass it explicitly instead of relying on `cd` side effects.
+
 Ideation:
 - `ideation_research.py`: shared normalization and validation for ideation research agenda shape and entity/topic/block relationships.
 - `prepare-ideation-research.py`: normalize and validate ideation payload research agenda before injection.
@@ -194,7 +199,7 @@ Cadence instructions consistently require:
 - npm publish workflow triggers on `workflow_dispatch` or tag `v*`.
 - Uses `actions/setup-node@v4` with Node 24.
 - Publishes public package; uses `--provenance` for non-private repos.
-- Repo history is release-driven (`v0.1.x` -> `v0.2.30`), with recent work focused on installer UX, brownfield routing/documentation, and safer workflow state handling.
+- Repo history is release-driven (`v0.1.x` -> `v0.2.35`), with recent work focused on installer UX, brownfield routing/documentation, and safer workflow state handling.
 
 ## Practical Read of Maturity
 What is strong:

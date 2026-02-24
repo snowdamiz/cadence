@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url";
 import { stdin as input, stdout as output } from "node:process";
 
 const CADENCE_SKILL_NAME = "cadence";
+const SCRIPT_PATH = fileURLToPath(import.meta.url);
+const SCRIPT_DIR = path.dirname(SCRIPT_PATH);
+const PACKAGE_JSON_PATH = path.resolve(SCRIPT_DIR, "..", "package.json");
 
 const TOOL_TARGETS = [
   { key: "codex", label: "Codex", relPath: [".codex", "skills", CADENCE_SKILL_NAME] },
@@ -87,10 +90,12 @@ function colorizeAsciiBanner() {
   });
 }
 
-function printHelp(binName) {
+function printHelp(binName, installerVersion) {
   const validTools = TOOL_TARGETS.map((tool) => tool.key).join(",");
   output.write(
     [
+      `Cadence Skill Installer v${installerVersion}`,
+      "",
       `Usage: ${binName} [options]`,
       "",
       "Options:",
@@ -148,10 +153,21 @@ function parseArgs(argv) {
   return parsed;
 }
 
+async function readInstallerVersion() {
+  try {
+    const raw = await fs.readFile(PACKAGE_JSON_PATH, "utf8");
+    const pkg = JSON.parse(raw);
+    if (typeof pkg.version === "string" && pkg.version.trim()) {
+      return pkg.version.trim();
+    }
+  } catch {
+    // Use fallback when package metadata is unavailable.
+  }
+  return "unknown";
+}
+
 function resolveSourceDir() {
-  const scriptPath = fileURLToPath(import.meta.url);
-  const scriptDir = path.dirname(scriptPath);
-  return path.resolve(scriptDir, "..", "skill");
+  return path.resolve(SCRIPT_DIR, "..", "skill");
 }
 
 async function ensureSourceDir(sourceDir) {
@@ -510,18 +526,19 @@ async function confirmInstall(parsed, selectedTargets) {
 
 async function main() {
   const binName = path.basename(process.argv[1] || "cadence-install");
+  const installerVersion = await readInstallerVersion();
   let parsed;
   try {
     parsed = parseArgs(process.argv.slice(2));
   } catch (error) {
     output.write(`Error: ${error.message}\n\n`);
-    printHelp(binName);
+    printHelp(binName, installerVersion);
     process.exitCode = 1;
     return;
   }
 
   if (parsed.help) {
-    printHelp(binName);
+    printHelp(binName, installerVersion);
     return;
   }
 
@@ -553,13 +570,19 @@ async function main() {
     return;
   }
 
+  output.write(
+    style(`\nInstalling Cadence skill version ${installerVersion}...\n`, ANSI.bold, ANSI.brightCyan)
+  );
+
   for (const target of selectedTargetsWithState) {
     await copySkillContents(sourceDir, target.targetDir);
     const action = target.installState?.exists ? "Updated" : "Installed";
     output.write(`${style(action, ANSI.bold, ANSI.brightGreen)} ${style(target.label, ANSI.bold, ANSI.white)}: ${style(target.targetDir, ANSI.periwinkle)}\n`);
   }
 
-  output.write(style("\nCadence skill installation complete.\n", ANSI.bold, ANSI.brightGreen));
+  output.write(
+    style(`\nCadence skill installation complete (version ${installerVersion}).\n`, ANSI.bold, ANSI.brightGreen)
+  );
 }
 
 main().catch((error) => {

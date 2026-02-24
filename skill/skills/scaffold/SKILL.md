@@ -5,7 +5,7 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
 
 # Scaffold
 
-1. Resolve project root by running `python3 ../../scripts/resolve-project-root.py` and store stdout in `PROJECT_ROOT`.
+1. Resolve project root by running `python3 ../../scripts/resolve-project-root.py --project-root "$PWD"` and store stdout in `PROJECT_ROOT`.
    - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
 2. Run `python3 ../../scripts/run-scaffold-gate.py --project-root "$PROJECT_ROOT"` (resolve this relative path from this sub-skill directory) and parse the JSON response.
 3. `run-scaffold-gate.py` performs workflow route assertion internally; if it errors, stop and surface the exact error to the user.
@@ -25,12 +25,15 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
    - Keep local-only mode (`state.repo-enabled=false`) and continue until the user configures a GitHub repo later.
 8. Ask the user: `Do you want .cadence tracked in git history? (yes/no)`.
 9. If the user answers yes:
-   - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/configure-cadence-gitignore.py" --mode track`.
-   - At end of this skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope scaffold --checkpoint cadence-tracked --paths .`.
+   - Run `python3 "$CADENCE_SCRIPTS_DIR/configure-cadence-gitignore.py" --mode track --gitignore-path "$PROJECT_ROOT/.gitignore"`.
+   - At end of this skill conversation, run `python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope scaffold --checkpoint cadence-tracked --paths . --project-root "$PROJECT_ROOT"`.
 10. If the user answers no:
-   - Run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/configure-cadence-gitignore.py" --mode ignore`.
-   - At end of this skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope scaffold --checkpoint cadence-ignored --paths .`.
-11. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-12. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
-13. Execute scaffold actions serially. Do not run this flow in parallel with other setup gates.
-14. In user-facing replies, summarize only the result. Do not expose internal command lines, skill chains, or execution traces unless explicitly requested.
+   - Run `python3 "$CADENCE_SCRIPTS_DIR/configure-cadence-gitignore.py" --mode ignore --gitignore-path "$PROJECT_ROOT/.gitignore"`.
+   - At end of this skill conversation, run `python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope scaffold --checkpoint cadence-ignored --paths . --project-root "$PROJECT_ROOT"`.
+11. Argument contract guardrail:
+   - `configure-cadence-gitignore.py` accepts `--mode` and optional `--gitignore-path`; do not pass `--project-root`.
+   - `finalize-skill-checkpoint.py` supports `--project-root`; always pass it explicitly.
+12. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+13. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
+14. Execute scaffold actions serially. Do not run this flow in parallel with other setup gates.
+15. In user-facing replies, summarize only the result. Do not expose internal command lines, skill chains, or execution traces unless explicitly requested.

@@ -3,14 +3,16 @@ interface:
   short_description: "Initialize Cadence project scaffolding for first-time setup"
   default_prompt: >-
     Follow skills/scaffold/SKILL.md for exact scaffold and policy behavior.
-    Resolve PROJECT_ROOT with scripts/resolve-project-root.py, run
+    Resolve PROJECT_ROOT with scripts/resolve-project-root.py --project-root "$PWD", run
     scripts/run-scaffold-gate.py --project-root "$PROJECT_ROOT", then run
     scripts/run-skill-entry-gate.py --project-root "$PROJECT_ROOT" --require-cadence and use its JSON output for
     CADENCE_SCRIPTS_DIR (cadence_scripts_dir) and push/local-only mode (repo_enabled).
+    For .cadence policy updates, run scripts/configure-cadence-gitignore.py with --mode and
+    --gitignore-path "$PROJECT_ROOT/.gitignore" only (do not pass --project-root).
     Never edit .cadence/cadence.json manually.
     Only rerun repo-status after remote setup to confirm repo_enabled=true; do not run an extra write pass
     just to persist false in local-only mode.
-    Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --paths . and the scope/checkpoint
+    Finalize with scripts/finalize-skill-checkpoint.py --paths . --project-root "$PROJECT_ROOT" and the scope/checkpoint
     that matches the selected policy (scaffold/cadence-tracked or scaffold/cadence-ignored), allowing
     status=no_changes and treating failures as blocking.
     Keep replies outcome-focused and hide internal traces unless asked.
