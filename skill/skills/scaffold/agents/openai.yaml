@@ -10,6 +10,7 @@ interface:
     For .cadence policy updates, run scripts/configure-cadence-gitignore.py with --mode and
     --gitignore-path "$PROJECT_ROOT/.gitignore" only (do not pass --project-root).
     Never edit .cadence/cadence.json manually.
+    Enforce the strict user-facing response templates from skills/scaffold/SKILL.md.
     Only rerun repo-status after remote setup to confirm repo_enabled=true; do not run an extra write pass
     just to persist false in local-only mode.
     Finalize with scripts/finalize-skill-checkpoint.py --paths . --project-root "$PROJECT_ROOT" and the scope/checkpoint

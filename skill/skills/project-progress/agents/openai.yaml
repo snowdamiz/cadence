@@ -7,7 +7,11 @@ interface:
     PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), push/local-only mode (repo_enabled),
     and workflow payload (workflow_state).
     Never edit .cadence/cadence.json manually.
+    Enforce the strict user-facing response templates from skills/project-progress/SKILL.md.
     Summarize progress in user-facing terms and for continue/resume requests route via workflow_state.route.
+    When workflow_state.route.skill_name is researcher (or next_item.id is task-research), run
+    scripts/run-research-pass.py --project-root "$PROJECT_ROOT" status and report only research progress;
+    omit global workflow completion counts/percent unless the user explicitly asks for full workflow metrics.
     If routed to researcher and more passes remain, use:
     Start a new chat and say "continue research".
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope project-progress

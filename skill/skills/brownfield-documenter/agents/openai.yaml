@@ -6,6 +6,7 @@ interface:
     Run scripts/run-skill-entry-gate.py --require-cadence, then use its JSON output for PROJECT_ROOT
     (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode (repo_enabled).
     Never edit .cadence/cadence.json manually.
+    Enforce the strict user-facing response templates from skills/brownfield-documenter/SKILL.md.
     Run scripts/run-brownfield-documentation.py --project-root "$PROJECT_ROOT" discover, perform evidence-based
     analysis, then persist with scripts/run-brownfield-documentation.py --project-root "$PROJECT_ROOT" complete --stdin.
     Require a research_agenda with at least one topic, verify with scripts/get-ideation.py, and mention

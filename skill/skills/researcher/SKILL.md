@@ -34,7 +34,86 @@ description: Execute ideation research agenda topics through dynamic multi-pass 
    - Run `python3 "$CADENCE_SCRIPTS_DIR/read-workflow-state.py" --project-root "$PROJECT_ROOT"` and inspect `route.skill_name`.
    - If `route.skill_name` is `planner`, end with this exact handoff line: `Start a new chat and say "plan my project".`
    - If workflow is complete, report that research and currently tracked workflow items are complete.
-10. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope researcher --checkpoint research-pass-recorded --paths .`.
-11. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-12. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
-13. Surface script failures verbatim and do not expose internal command traces unless explicitly requested.
+10. Strict user-facing return format is required for all successful runs. Use the exact section order below and fill values from script output (and the just-submitted pass payload where applicable):
+   - If `complete` returns `handoff_required=true`, respond exactly in this structure, then stop:
+
+     ```text
+     Pass recorded:
+
+     - Pass ID: <pass_id>
+     - Pass summary: <pass_summary>
+
+     Topic outcomes:
+
+     - <topic_id>: <status>; confidence=<confidence>; unresolved_questions=<count>
+     - <topic_id>: <status>; confidence=<confidence>; unresolved_questions=<count>
+
+     Research progress:
+
+     - Topics complete: <topic_complete>/<topic_total>
+     - Topics needing follow-up: <topic_needs_followup>
+     - Topics pending: <topic_pending>
+     - Passes complete: <pass_complete>
+     - Passes pending: <pass_pending>
+     - Next pass: <next_pass_id or "none">
+
+     Start a new chat and say "cadence, continue research".
+     ```
+
+   - If `complete` returns `research_complete=true` and route advances to planner, respond exactly:
+
+     ```text
+     Pass recorded:
+
+     - Pass ID: <pass_id>
+     - Pass summary: <pass_summary>
+
+     Research progress:
+
+     - Topics complete: <topic_complete>/<topic_total>
+     - Topics needing follow-up: <topic_needs_followup>
+     - Topics pending: <topic_pending>
+     - Passes complete: <pass_complete>
+     - Passes pending: <pass_pending>
+
+     Start a new chat and say "cadence, plan my project".
+     ```
+
+   - If `complete` returns `research_complete=true` and workflow is complete, respond exactly:
+
+     ```text
+     Pass recorded:
+
+     - Pass ID: <pass_id>
+     - Pass summary: <pass_summary>
+
+     Research progress:
+
+     - Topics complete: <topic_complete>/<topic_total>
+     - Topics needing follow-up: <topic_needs_followup>
+     - Topics pending: <topic_pending>
+     - Passes complete: <pass_complete>
+     - Passes pending: <pass_pending>
+
+     Research and currently tracked workflow items are complete.
+     ```
+
+   - If `start` returns `research_complete=true`, do not run a pass; respond exactly:
+
+     ```text
+     Research progress:
+     
+     - Topics complete: <topic_complete>/<topic_total>
+     - Topics needing follow-up: <topic_needs_followup>
+     - Topics pending: <topic_pending>
+     - Passes complete: <pass_complete>
+     - Passes pending: <pass_pending>
+
+     Research is already complete.
+     ```
+
+11. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope researcher --checkpoint research-pass-recorded --paths .`.
+12. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+13. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
+14. Surface script failures verbatim and do not expose internal command traces unless explicitly requested.
+15. For successful runs, do not add extra prose before or after the strict templates in this file.

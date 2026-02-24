@@ -27,3 +27,33 @@ description: Classify project mode (greenfield vs brownfield) and capture a dete
 11. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 12. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 13. In normal user-facing updates, report mode decision and baseline outcome without raw command traces or internal routing details unless explicitly requested.
+
+## Strict Response Format
+
+- If resulting mode is `brownfield`, respond exactly in this shape:
+
+  ```text
+  Brownfield intake result:
+
+  - Mode: brownfield (source: <mode_source>; detected: <detected_mode>)
+  - Repository scale: files=<file_count>, directories=<directory_count>
+  - Tooling manifests: <count>
+  - CI workflows: <count>
+  - Monorepo signal: <yes|no>
+  - Checkpoint: brownfield-intake/baseline-captured (<ok|no_changes>)
+
+  Start a new chat and say "cadence, document my existing project".
+  ```
+
+- If resulting mode is `greenfield`, respond exactly in this shape:
+
+  ```text
+  Brownfield intake result:
+  
+  - Mode: greenfield (source: <mode_source>; detected: <detected_mode>)
+  - Baseline capture: skipped (clean repository)
+  - Checkpoint: brownfield-intake/baseline-captured (<ok|no_changes>)
+  - Next step: Continue with ideation.
+
+   Start a new chat and say "cadence, help define my project".
+  ```

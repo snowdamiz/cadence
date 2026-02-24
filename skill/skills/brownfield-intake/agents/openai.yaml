@@ -6,6 +6,7 @@ interface:
     Run scripts/run-skill-entry-gate.py --require-cadence, then use its JSON output for PROJECT_ROOT
     (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode (repo_enabled).
     Never edit .cadence/cadence.json manually.
+    Enforce the strict user-facing response templates from skills/brownfield-intake/SKILL.md.
     Run scripts/run-brownfield-intake.py --project-root "$PROJECT_ROOT" --project-mode auto.
     Do not ask the user to choose mode up front; clean repositories should resolve to greenfield automatically.
     If the user explicitly asks to force a mode, rerun with --project-mode <greenfield|brownfield>.

@@ -65,3 +65,43 @@ description: Discuss, audit, and update existing project ideation in .cadence/ca
 18. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 19. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 20. Ask whether to continue refining another aspect or stop.
+
+## Strict Response Format
+
+- In discussion-only mode (no persistence), respond exactly in this shape:
+
+  ```text
+  Ideation discussion update:
+
+  - Focus area: <current focus>
+  - Tradeoff summary: <short recommendation or options>
+
+  Next question: <exactly one question>
+  ```
+
+- Before persistence, respond exactly in this shape:
+
+  ```text
+  Proposed ideation update:
+
+  - Add: <fields>
+  - Update: <fields>
+  - Remove: <fields>
+  - Unchanged: <fields>
+  - Research impact: blocks=<count>, topics=<count>, entities=<count>
+  
+  Confirmation needed: Persist these ideation updates? (yes/no)
+  ```
+
+- After successful persistence, respond exactly in this shape:
+
+  ```text
+  Ideation update captured:
+
+  - Updated fields: <summary>
+  - Research agenda: blocks=<block_count>, topics=<topic_count>, entities=<entity_count>
+  - Research execution: reset for replanning
+  - Checkpoint: ideation-updater/ideation-updated (<ok|no_changes>)
+
+  Next action: Continue refining another aspect? (yes/no)
+  ```

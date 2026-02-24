@@ -60,3 +60,28 @@ description: Perform deep evidence-based analysis of an existing codebase and pe
 15. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 16. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 17. In normal user-facing updates, report brownfield findings and persisted ideation outcomes without raw command traces or internal routing details unless explicitly requested.
+
+## Strict Response Format
+
+- If clarification is required before persistence, respond exactly:
+
+  ```text
+  Brownfield documentation in progress:
+
+  - Missing detail: <single highest-leverage gap>
+  - Question: <one focused question>
+  ```
+
+- On successful persistence, respond exactly in this shape:
+
+  ```text
+  Brownfield documentation captured:
+  
+  - Objective: <objective summary>
+  - Core outcome: <core outcome summary>
+  - Research agenda: blocks=<block_count>, topics=<topic_count>, entities=<entity_count>
+  - Payload repairs: <none|count + short description>
+  - Checkpoint: brownfield-documenter/documentation-captured (<ok|no_changes>)
+
+  Start a new chat with a new agent and say "cadence, research my project".
+  ```

@@ -37,3 +37,30 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
 13. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 14. Execute scaffold actions serially. Do not run this flow in parallel with other setup gates.
 15. In user-facing replies, summarize only the result. Do not expose internal command lines, skill chains, or execution traces unless explicitly requested.
+
+## Strict Response Format
+
+- For decision-required turns, respond exactly in this shape:
+
+  ```text
+  Scaffold status:
+
+  - Project root: <PROJECT_ROOT>
+  - Cadence initialized: <yes|no>
+  - Repo mode: <remote-enabled|local-only|pending>
+
+  Decision needed: <one required decision>
+  ```
+
+- For successful completion, respond exactly in this shape:
+
+  ```text
+  Scaffold complete:
+
+  - Project root: <PROJECT_ROOT>
+  - Cadence state: initialized
+  - Repo mode: <remote-enabled|local-only>
+  - .cadence git policy: <tracked|ignored>
+  - Checkpoint: scaffold/<cadence-tracked|cadence-ignored> (<ok|no_changes>)
+  - Next step: Run prerequisite gate.
+  ```

@@ -86,3 +86,42 @@ description: Guide users from a rough concept to a fully defined project idea th
 22. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 23. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 24. If the user requests revisions later, regenerate the payload, rerun `prepare-ideation-research.py`, and rerun `inject-ideation.py` from `PROJECT_ROOT`.
+
+## Strict Response Format
+
+- During discovery turns (before final confirmation), respond exactly in this shape:
+
+  ```text
+  Ideation progress:
+
+  - Understanding update: <one sentence>
+
+  Next question: <exactly one question>
+  ```
+
+- When presenting final pre-persistence confirmation, respond exactly in this shape:
+
+  ```text
+  Proposed ideation package:
+
+  - Objective: <summary>
+  - Core outcome: <summary>
+  - Audience: <summary>
+  - Scope: in=<count>, out=<count>
+  - Research agenda: blocks=<block_count>, topics=<topic_count>, entities=<entity_count>
+  
+  Confirmation needed: Persist this ideation package? (yes/no)
+  ```
+
+- On successful persistence, respond exactly in this shape:
+
+  ```text
+  Ideation captured:
+
+  - Objective: <summary>
+  - Core outcome: <summary>
+  - Research agenda: blocks=<block_count>, topics=<topic_count>, entities=<entity_count>
+  - Checkpoint: ideator/ideation-completed (<ok|no_changes>)
+
+  Start a new chat with a new agent and say "cadence, research my project".
+  ```

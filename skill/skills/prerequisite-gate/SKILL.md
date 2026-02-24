@@ -19,3 +19,28 @@ description: Run and persist Cadence prerequisite checks for Python availability
 9. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 10. Surface script failures verbatim instead of adding custom fallback logic.
 11. In normal user-facing updates, share the prerequisite outcome without raw command traces or internal routing details unless explicitly requested.
+
+## Strict Response Format
+
+- If `MISSING_PYTHON3` is returned, respond exactly:
+
+  ```text
+  Prerequisite status:
+
+  - Python3: missing
+  - Cadence prerequisite gate: not passed
+  
+  Action required: confirm prerequisite installation.
+  ```
+
+- On successful prerequisite completion, respond exactly:
+
+  ```text
+  Prerequisite gate complete:
+
+  - Python3: available
+  - Cadence prerequisite gate: passed
+  - Checkpoint: prerequisite-gate/prerequisites-passed (<ok|no_changes>)
+  
+  Next step: Run project mode and baseline intake.
+  ```

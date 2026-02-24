@@ -27,3 +27,31 @@ description: Create a greenfield project roadmap from cadence ideation and resea
 9. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 10. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 11. In normal user-facing updates, report roadmap outcomes without raw command traces or internal routing details unless explicitly requested.
+
+## Strict Response Format
+
+- Before persistence confirmation, respond exactly in this shape:
+
+  ```text
+  Proposed roadmap:
+
+  - Milestones: <milestone_count>
+  - Phases: <phase_count>
+  - Detail level: milestone_phase_v1
+  - Key assumptions: <count or "none">
+  
+  Confirmation needed: Persist this roadmap? (yes/no)
+  ```
+
+- After successful persistence, respond exactly in this shape:
+
+  ```text
+  Roadmap captured:
+
+  - Milestones: <milestone_count>
+  - Phases: <phase_count>
+  - Detail level: milestone_phase_v1
+  - Checkpoint: planner/plan-created (<ok|no_changes>)
+  
+  Next route: <skill_name or "workflow complete">
+  ```

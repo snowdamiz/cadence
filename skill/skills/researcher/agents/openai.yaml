@@ -9,7 +9,10 @@ interface:
     Never edit .cadence/cadence.json manually.
     Run exactly one pass per chat: scripts/run-research-pass.py start, research only that pass's topics,
     then persist with scripts/run-research-pass.py complete. Do not run a second pass in the same chat.
-    If more work remains, end with: Start a new chat and say "continue research".
+    Enforce the strict user-facing return templates defined in skills/researcher/SKILL.md for every successful run,
+    and do not add extra prose outside those templates.
+    If more work remains, include the full required response sections and end with:
+    Start a new chat and say "continue research".
     If research is complete and route advances to planner, end with:
     Start a new chat and say "plan my project".
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope researcher

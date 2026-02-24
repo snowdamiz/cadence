@@ -7,6 +7,7 @@ interface:
     output for PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode
     (repo_enabled).
     Never edit .cadence/cadence.json manually.
+    Enforce the strict user-facing response templates from skills/ideator/SKILL.md.
     Ask one question at a time, build an execution-ready ideation object and complete research_agenda,
     then from PROJECT_ROOT rerun route assertion, run scripts/prepare-ideation-research.py,
     and persist with scripts/inject-ideation.py.
