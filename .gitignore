@@ -1,3 +1,8 @@
+node_modules/
+**/node_modules/
+**/dist/
+**/.vite/
+**/*.tsbuildinfo
 skill/scripts/.last-project-root
 **/__pycache__/
 **/*.pyc

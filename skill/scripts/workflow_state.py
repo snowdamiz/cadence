@@ -15,6 +15,7 @@ from ideation_research import ensure_ideation_research_defaults
 WORKFLOW_SCHEMA_VERSION = 3
 VALID_STATUSES = {"pending", "in_progress", "complete", "blocked", "skipped"}
 COMPLETED_STATUSES = {"complete", "skipped"}
+LEGACY_PRESERVE_STATUSES = {"in_progress", "blocked", "skipped"}
 
 ROUTE_KEYS = {"skill_name", "skill_path", "reason"}
 DEFAULT_ROUTE_BY_ITEM_ID = {
@@ -360,7 +361,17 @@ def _apply_legacy_task_states(
     cadence_dir_exists: bool,
 ) -> None:
     for item_id, is_complete in _legacy_completion_map(data, cadence_dir_exists=cadence_dir_exists).items():
-        _set_item_status(plan, item_id, "complete" if is_complete else "pending")
+        item = _find_item_by_id(plan, item_id)
+        if item is None:
+            continue
+
+        # Legacy booleans only encode pending/complete. Preserve richer explicit
+        # task states so they survive normalization and round-trips.
+        current_status = _coerce_status(item.get("status", "pending"))
+        if current_status in LEGACY_PRESERVE_STATUSES:
+            continue
+
+        item["status"] = "complete" if is_complete else "pending"
 
 
 def _sync_legacy_flags_from_plan(data: dict[str, Any], plan: list[dict[str, Any]]) -> None:

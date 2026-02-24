@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from project_root import resolve_project_root, write_project_root_hint
@@ -38,8 +39,11 @@ def load_data(project_root: Path):
     state_path = cadence_json_path(project_root)
     if not state_path.exists():
         return default_data()
-    with state_path.open("r", encoding="utf-8") as file:
-        data = json.load(file)
+    try:
+        with state_path.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"INVALID_CADENCE_JSON: {exc} path={state_path}") from exc
     return reconcile_workflow_state(data, cadence_dir_exists=state_path.parent.exists())
 
 
@@ -62,7 +66,7 @@ def main():
             allow_hint=True,
         )
     except ValueError as exc:
-        print(str(exc))
+        print(str(exc), file=sys.stderr)
         return 1
 
     write_project_root_hint(SCRIPT_DIR, project_root)

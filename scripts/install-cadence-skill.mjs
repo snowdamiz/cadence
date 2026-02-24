@@ -468,45 +468,21 @@ async function chooseTargets(parsed, targets) {
   return chooseTargetsWithTextPrompt(targets);
 }
 
-async function copyEntry(srcPath, destPath) {
-  const stat = await fs.lstat(srcPath);
-
-  if (stat.isDirectory()) {
-    await fs.mkdir(destPath, { recursive: true });
-    const entries = await fs.readdir(srcPath);
-    for (const entry of entries) {
-      if (SKIP_NAMES.has(entry)) {
-        continue;
-      }
-      await copyEntry(path.join(srcPath, entry), path.join(destPath, entry));
-    }
-    return;
-  }
-
-  if (stat.isSymbolicLink()) {
-    const linkTarget = await fs.readlink(srcPath);
-    try {
-      await fs.unlink(destPath);
-    } catch {
-      // Ignore if destination does not exist.
-    }
-    await fs.symlink(linkTarget, destPath);
-    return;
-  }
-
-  await fs.mkdir(path.dirname(destPath), { recursive: true });
-  await fs.copyFile(srcPath, destPath);
-}
-
 async function copySkillContents(sourceDir, targetDir) {
   await fs.mkdir(targetDir, { recursive: true });
   const entries = await fs.readdir(sourceDir);
-  for (const entry of entries) {
-    if (SKIP_NAMES.has(entry)) {
-      continue;
-    }
-    await copyEntry(path.join(sourceDir, entry), path.join(targetDir, entry));
-  }
+  await Promise.all(
+    entries
+      .filter((entry) => !SKIP_NAMES.has(entry))
+      .map((entry) =>
+        fs.cp(path.join(sourceDir, entry), path.join(targetDir, entry), {
+          recursive: true,
+          force: true,
+          errorOnExist: false,
+          filter: (sourcePath) => !SKIP_NAMES.has(path.basename(sourcePath))
+        })
+      )
+  );
 }
 
 async function confirmInstall(parsed, selectedTargets) {

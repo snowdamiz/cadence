@@ -1,11 +1,33 @@
 #!/usr/bin/env python3
 """Render .cadence/cadence.json ideation payload in human-readable text."""
 
+from __future__ import annotations
+
+import argparse
 import json
+import sys
 from pathlib import Path
 
+from project_root import resolve_project_root, write_project_root_hint
 
-CADENCE_JSON_PATH = Path(".cadence") / "cadence.json"
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Render ideation payload from cadence.json in human-readable text.",
+    )
+    parser.add_argument(
+        "--project-root",
+        default="",
+        help="Explicit project root path override.",
+    )
+    return parser.parse_args()
+
+
+def cadence_json_path(project_root: Path) -> Path:
+    return project_root / ".cadence" / "cadence.json"
 
 
 def humanize_key(key):
@@ -50,11 +72,15 @@ def render_value(value, indent=0):
     return [f"{space}{scalar_to_text(value)}"]
 
 
-def load_ideation():
-    if not CADENCE_JSON_PATH.exists():
+def load_ideation(project_root: Path):
+    state_path = cadence_json_path(project_root)
+    if not state_path.exists():
         return {}
-    with CADENCE_JSON_PATH.open("r", encoding="utf-8") as file:
-        data = json.load(file)
+    try:
+        with state_path.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"INVALID_CADENCE_JSON: {exc} path={state_path}") from exc
     ideation = data.get("ideation", {})
     return ideation if isinstance(ideation, dict) else {}
 
@@ -103,12 +129,31 @@ def render_research_agenda(agenda):
 
 
 def main():
-    ideation = load_ideation()
+    args = parse_args()
+    explicit_project_root = args.project_root.strip() or None
+    try:
+        project_root, _ = resolve_project_root(
+            script_dir=SCRIPT_DIR,
+            explicit_project_root=explicit_project_root,
+            require_cadence=False,
+            allow_hint=True,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    write_project_root_hint(SCRIPT_DIR, project_root)
+    try:
+        ideation = load_ideation(project_root)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
     print("Current Project Ideation")
     print("========================")
     if not ideation:
         print("No ideation is currently saved.")
-        return
+        return 0
 
     core_ideation = {key: value for key, value in ideation.items() if key != "research_agenda"}
     if core_ideation:
@@ -120,7 +165,8 @@ def main():
         print()
     for line in agenda_lines:
         print(line)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

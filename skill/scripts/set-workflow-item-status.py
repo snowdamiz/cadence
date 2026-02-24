@@ -6,34 +6,47 @@ import json
 import sys
 from pathlib import Path
 
+from project_root import resolve_project_root, write_project_root_hint
 from workflow_state import default_data, reconcile_workflow_state, set_workflow_item_status
 
 
-CADENCE_DIR = Path(".cadence")
-CADENCE_JSON_PATH = CADENCE_DIR / "cadence.json"
+SCRIPT_DIR = Path(__file__).resolve().parent
 VALID_STATUSES = ["pending", "in_progress", "complete", "blocked", "skipped"]
 
 
-def load_data():
-    if not CADENCE_JSON_PATH.exists():
+def cadence_paths(project_root: Path) -> tuple[Path, Path]:
+    cadence_dir = project_root / ".cadence"
+    cadence_json_path = cadence_dir / "cadence.json"
+    return cadence_dir, cadence_json_path
+
+
+def load_data(project_root: Path):
+    cadence_dir, cadence_json_path = cadence_paths(project_root)
+    if not cadence_json_path.exists():
         return default_data()
     try:
-        with CADENCE_JSON_PATH.open("r", encoding="utf-8") as file:
+        with cadence_json_path.open("r", encoding="utf-8") as file:
             return json.load(file)
     except json.JSONDecodeError as exc:
-        print(f"INVALID_CADENCE_JSON: {exc}", file=sys.stderr)
+        print(f"INVALID_CADENCE_JSON: {exc} path={cadence_json_path}", file=sys.stderr)
         raise SystemExit(1)
 
 
-def save_data(data):
-    CADENCE_DIR.mkdir(parents=True, exist_ok=True)
-    with CADENCE_JSON_PATH.open("w", encoding="utf-8") as file:
+def save_data(project_root: Path, data):
+    cadence_dir, cadence_json_path = cadence_paths(project_root)
+    cadence_dir.mkdir(parents=True, exist_ok=True)
+    with cadence_json_path.open("w", encoding="utf-8") as file:
         json.dump(data, file, indent=4)
         file.write("\n")
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Set workflow item status in .cadence/cadence.json.")
+    parser.add_argument(
+        "--project-root",
+        default="",
+        help="Explicit project root path override.",
+    )
     parser.add_argument("--id", required=True, help="Workflow item id to update")
     parser.add_argument(
         "--status",
@@ -51,8 +64,21 @@ def parse_args():
 
 def main():
     args = parse_args()
-    data = load_data()
-    cadence_exists = CADENCE_DIR.exists()
+    explicit_project_root = args.project_root.strip() or None
+    try:
+        project_root, _ = resolve_project_root(
+            script_dir=SCRIPT_DIR,
+            explicit_project_root=explicit_project_root,
+            require_cadence=False,
+            allow_hint=True,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    write_project_root_hint(SCRIPT_DIR, project_root)
+    data = load_data(project_root)
+    cadence_exists = (project_root / ".cadence").exists()
 
     data = reconcile_workflow_state(data, cadence_dir_exists=cadence_exists)
     data, found = set_workflow_item_status(
@@ -65,11 +91,12 @@ def main():
         print(f"WORKFLOW_ITEM_NOT_FOUND: {args.id}", file=sys.stderr)
         return 2
 
-    save_data(data)
+    save_data(project_root, data)
 
     workflow = data.get("workflow", {})
     result = {
         "status": "ok",
+        "project_root": str(project_root),
         "item_id": args.id,
         "item_status": args.status,
         "next_phase": workflow.get("next_phase", "complete"),

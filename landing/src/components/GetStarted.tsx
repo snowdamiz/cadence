@@ -2,7 +2,7 @@ import { useScrollReveal } from '@/hooks/useScrollReveal'
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard'
 import { INSTALL_COMMANDS, REPO_URL, NPM_URL } from '@/lib/constants'
 import { Copy, Check, Github, ExternalLink } from 'lucide-react'
-import { Button } from './ui/button'
+import { buttonVariants } from './ui/button'
 
 export function GetStarted() {
   const ref = useScrollReveal()
@@ -48,17 +48,23 @@ export function GetStarted() {
         </div>
 
         <div className="scroll-reveal stagger-2 flex flex-wrap items-center justify-center gap-3">
-          <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
-            <Button variant="secondary" size="lg">
-              <Github size={18} />
-              GitHub
-            </Button>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: 'secondary', size: 'lg' })}
+          >
+            <Github size={18} />
+            GitHub
           </a>
-          <a href={NPM_URL} target="_blank" rel="noopener noreferrer">
-            <Button variant="ghost" size="lg">
-              <ExternalLink size={18} />
-              npm
-            </Button>
+          <a
+            href={NPM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonVariants({ variant: 'ghost', size: 'lg' })}
+          >
+            <ExternalLink size={18} />
+            npm
           </a>
         </div>
       </div>

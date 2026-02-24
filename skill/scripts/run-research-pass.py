@@ -785,7 +785,18 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
         if topic_id not in pass_topic_ids:
             print(f"PASS_RESULT_TOPIC_NOT_IN_PASS: {topic_id}", file=sys.stderr)
             return 2
+        if topic_id in topic_results_index:
+            print(f"PASS_RESULT_TOPIC_DUPLICATE: {topic_id}", file=sys.stderr)
+            return 2
         topic_results_index[topic_id] = topic_result
+
+    missing_topic_ids = [topic_id for topic_id in pass_topic_ids if topic_id not in topic_results_index]
+    if missing_topic_ids:
+        print(
+            "PASS_RESULT_MISSING_TOPICS: " + ", ".join(missing_topic_ids),
+            file=sys.stderr,
+        )
+        return 2
 
     topic_status = execution.get("topic_status")
     topic_status = topic_status if isinstance(topic_status, dict) else {}

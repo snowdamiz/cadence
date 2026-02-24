@@ -12,10 +12,10 @@ from ideation_research import (
     normalize_ideation_research,
     reset_research_execution,
 )
+from project_root import resolve_project_root, write_project_root_hint
 from workflow_state import default_data, reconcile_workflow_state
 
 
-CADENCE_JSON_PATH = Path(".cadence") / "cadence.json"
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROUTE_GUARD_SCRIPT = SCRIPT_DIR / "assert-workflow-route.py"
 
@@ -24,27 +24,42 @@ def run_command(command):
     return subprocess.run(command, capture_output=True, text=True, check=False)
 
 
-def assert_ideator_route():
-    result = run_command([sys.executable, str(ROUTE_GUARD_SCRIPT), "--skill-name", "ideator"])
+def cadence_json_path(project_root: Path) -> Path:
+    return project_root / ".cadence" / "cadence.json"
+
+
+def assert_ideator_route(project_root: Path):
+    result = run_command(
+        [
+            sys.executable,
+            str(ROUTE_GUARD_SCRIPT),
+            "--skill-name",
+            "ideator",
+            "--project-root",
+            str(project_root),
+        ]
+    )
     if result.returncode != 0:
         stderr = result.stderr.strip() or result.stdout.strip() or "WORKFLOW_ROUTE_CHECK_FAILED"
         raise ValueError(stderr)
 
 
-def load_cadence():
-    if not CADENCE_JSON_PATH.exists():
+def load_cadence(project_root: Path):
+    state_path = cadence_json_path(project_root)
+    if not state_path.exists():
         return default_data()
     try:
-        with CADENCE_JSON_PATH.open("r", encoding="utf-8") as file:
+        with state_path.open("r", encoding="utf-8") as file:
             data = json.load(file)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"Invalid JSON in {CADENCE_JSON_PATH}: {exc}") from exc
-    return reconcile_workflow_state(data, cadence_dir_exists=CADENCE_JSON_PATH.parent.exists())
+        raise ValueError(f"Invalid JSON in {state_path}: {exc}") from exc
+    return reconcile_workflow_state(data, cadence_dir_exists=state_path.parent.exists())
 
 
-def save_cadence(data):
-    CADENCE_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with CADENCE_JSON_PATH.open("w", encoding="utf-8") as file:
+def save_cadence(project_root: Path, data):
+    state_path = cadence_json_path(project_root)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    with state_path.open("w", encoding="utf-8") as file:
         json.dump(data, file, indent=4)
         file.write("\n")
 
@@ -59,10 +74,12 @@ def deep_merge(base, patch):
     return merged
 
 
-def parse_payload(args):
+def parse_payload(args, project_root: Path):
     payload_file_path = None
     if args.file:
-        payload_file_path = Path(args.file)
+        payload_file_path = Path(args.file).expanduser()
+        if not payload_file_path.is_absolute():
+            payload_file_path = (project_root / payload_file_path).resolve()
         try:
             payload_text = payload_file_path.read_text(encoding="utf-8")
         except OSError as exc:
@@ -97,6 +114,11 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Inject finalized ideation payload into .cadence/cadence.json."
     )
+    parser.add_argument(
+        "--project-root",
+        default="",
+        help="Explicit project root path override.",
+    )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--file", help="Read ideation payload JSON from file path")
     group.add_argument("--json", help="Read ideation payload JSON from inline string")
@@ -117,12 +139,20 @@ def parse_args():
 
 def main():
     args = parse_args()
+    explicit_project_root = args.project_root.strip() or None
 
     try:
+        project_root, _ = resolve_project_root(
+            script_dir=SCRIPT_DIR,
+            explicit_project_root=explicit_project_root,
+            require_cadence=False,
+            allow_hint=True,
+        )
+        write_project_root_hint(SCRIPT_DIR, project_root)
         if args.completion_state == "complete":
-            assert_ideator_route()
-        data = load_cadence()
-        payload, payload_file_path = parse_payload(args)
+            assert_ideator_route(project_root)
+        data = load_cadence(project_root)
+        payload, payload_file_path = parse_payload(args, project_root)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -146,8 +176,8 @@ def main():
         print(str(exc), file=sys.stderr)
         return 2
 
-    data = reconcile_workflow_state(data, cadence_dir_exists=CADENCE_JSON_PATH.parent.exists())
-    save_cadence(data)
+    data = reconcile_workflow_state(data, cadence_dir_exists=cadence_json_path(project_root).parent.exists())
+    save_cadence(project_root, data)
 
     payload_deleted = False
     if payload_file_path is not None:
@@ -162,7 +192,7 @@ def main():
         json.dumps(
             {
                 "status": "ok",
-                "path": str(CADENCE_JSON_PATH),
+                "path": str(cadence_json_path(project_root)),
                 "completion_state": args.completion_state,
                 "payload_deleted": payload_deleted,
             }

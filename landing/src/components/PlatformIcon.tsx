@@ -37,8 +37,8 @@ export function PlatformIcon({ toolKey, className }: IconProps) {
         </FillSvg>
       )
 
-    /* Antigravity arch logo */
-    case 'antigravity':
+    /* Agents arch logo */
+    case 'agents':
       return (
         <FillSvg className={className}>
           <path d="M2 22C4 15 8 5 12 2c4 3 8 13 10 20h-5c-1.5-5.5-3.5-12-5-14.5-1.5 2.5-3.5 9-5 14.5Z" />

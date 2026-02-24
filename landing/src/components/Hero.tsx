@@ -1,7 +1,7 @@
 import { useCopyToClipboard } from '@/hooks/useCopyToClipboard'
 import { TERMINAL_LINES, BANNER_LINES } from '@/lib/constants'
 import { Copy, Check, ChevronDown } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button, buttonVariants } from './ui/button'
 
 const COLORS = {
   white: 'rgba(255,255,255,0.85)',
@@ -82,10 +82,8 @@ export function Hero() {
                   </>
                 )}
               </Button>
-              <a href="#architecture">
-                <Button variant="secondary" size="lg">
-                  How it works
-                </Button>
+              <a href="#architecture" className={buttonVariants({ variant: 'secondary', size: 'lg' })}>
+                How it works
               </a>
             </div>
 

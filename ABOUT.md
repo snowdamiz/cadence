@@ -25,7 +25,7 @@ Top-level:
 - `/Users/sn0w/Documents/dev/cadence/scripts/install-cadence-skill.mjs`: npm CLI installer that copies `skill/` into tool-specific skill dirs.
 - `/Users/sn0w/Documents/dev/cadence/skill/`: actual Cadence skill package.
 - `/Users/sn0w/Documents/dev/cadence/.github/workflows/publish.yml`: npm publish via GitHub Actions + OIDC trusted publishing.
-- `/Users/sn0w/Documents/dev/cadence/package.json`: package metadata (`name: cadence-skill-installer`, `version: 0.2.6`, `type: module`, Node `>=18`).
+- `/Users/sn0w/Documents/dev/cadence/package.json`: package metadata (`name: cadence-skill-installer`, `version: 0.2.25`, `type: module`, Node `>=18`).
 
 Install-time payload (what gets copied to user tool skill paths):
 - `skill/SKILL.md` (orchestrator policy)
@@ -168,7 +168,7 @@ Cadence instructions consistently require:
 - npm publish workflow triggers on `workflow_dispatch` or tag `v*`.
 - Uses `actions/setup-node@v4` with Node 24.
 - Publishes public package; uses `--provenance` for non-private repos.
-- Repo history is release-driven (`v0.1.x` -> `v0.2.6`), with recent work focused on installer UX and safer routing.
+- Repo history is release-driven (`v0.1.x` -> `v0.2.25`), with recent work focused on installer UX and safer routing.
 
 ## Practical Read of Maturity
 What is strong:
@@ -180,7 +180,7 @@ What is strong:
 What is intentionally narrow right now:
 - default workflow tracks Foundation setup plus ideation research execution (scaffold/prereq/ideation/research)
 - prerequisite gate currently checks only `python3` presence
-- no in-repo automated test suite for scripts yet
+- in-repo automated tests cover ideation normalization, workflow state transitions, route assertions, checkpoint batching, and research-pass payload validation
 - this repo ships framework/instructions; project-specific execution happens in downstream repos that install the skill
 
 ## Minimal Mental Model

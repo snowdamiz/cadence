@@ -1,4 +1,4 @@
-export const VERSION = '0.2.12'
+export const VERSION = __CADENCE_VERSION__
 
 export const REPO_URL = 'https://github.com/snowdamiz/cadence'
 export const NPM_URL = 'https://www.npmjs.com/package/cadence-skill-installer'
@@ -11,7 +11,7 @@ export const INSTALL_COMMANDS = [
 
 export const TOOLS = [
   { name: 'Codex', key: 'codex' },
-  { name: 'Antigravity', key: 'antigravity' },
+  { name: 'Agents', key: 'agents' },
   { name: 'Claude', key: 'claude' },
   { name: 'Gemini', key: 'gemini' },
   { name: 'Copilot', key: 'copilot' },
