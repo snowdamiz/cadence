@@ -17,10 +17,10 @@ description: Structured project operating system for end-to-end greenfield or br
    - raw commands, terminal traces, or timing metadata
 3. When internal gates/checks succeed, continue directly with the user task and do not announce that checks were run.
 
-## State Mutation Safety
-1. Never manually edit `.cadence/cadence.json`.
-2. Mutate Cadence state only through the provided Cadence scripts (for example `run-*-gate.py`, `inject-ideation.py`, `run-brownfield-documentation.py`, `run-research-pass.py`, `set-workflow-item-status.py`, `read-workflow-state.py`).
-3. If a required state transition is not supported by existing scripts, stop and update scripts first instead of writing JSON by hand.
+## State Access Safety
+1. Never read or edit `.cadence/cadence.json` directly (for example with `cat`, `rg`, `jq`, or file-read tools).
+2. Use provided Cadence scripts for every Cadence state read and write (for example `run-*-gate.py`, `inject-ideation.py`, `run-brownfield-documentation.py`, `run-research-pass.py`, `set-workflow-item-status.py`, `read-workflow-state.py`, `get-ideation.py`, `query-ideation-research.py`).
+3. If a required state read/write is not supported by existing scripts, stop and update scripts first instead of touching JSON by hand.
 4. For subskill preflight setup (project root + scripts-dir + repo-status, with optional route/workflow checks), use `scripts/run-skill-entry-gate.py` instead of repeating command chains.
 
 ## Repo Status Gate

@@ -5,7 +5,7 @@ interface:
     Follow skills/prerequisite-gate/SKILL.md for exact gate behavior.
     Run scripts/run-skill-entry-gate.py --require-cadence, then use its JSON output for PROJECT_ROOT
     (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode (repo_enabled).
-    Never edit .cadence/cadence.json manually.
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Enforce the strict user-facing response templates from skills/prerequisite-gate/SKILL.md.
     Run scripts/run-prerequisite-gate.py --project-root "$PROJECT_ROOT" --scripts-dir "$CADENCE_SCRIPTS_DIR".
     During root Cadence first-run bootstrap, do not stop after prerequisite success; continue routing so

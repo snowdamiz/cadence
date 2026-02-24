@@ -6,7 +6,7 @@ interface:
     Run scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name planner, then use its JSON output
     for PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode
     (repo_enabled).
-    Never edit .cadence/cadence.json manually.
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Enforce the strict user-facing response templates from skills/planner/SKILL.md.
     Gather context with scripts/run-planner.py --project-root "$PROJECT_ROOT" discover, then draft and confirm a
     roadmap containing milestones and phases only (no waves/tasks) using detail_level milestone_phase_v1.

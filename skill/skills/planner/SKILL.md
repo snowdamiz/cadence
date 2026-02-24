@@ -8,7 +8,7 @@ description: Create a greenfield project roadmap from cadence ideation and resea
 1. Run shared skill entry gates once at conversation start:
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name planner`
    - Parse JSON and store `PROJECT_ROOT` from `project_root`, `CADENCE_SCRIPTS_DIR` from `cadence_scripts_dir`, and push mode from `repo_enabled` (`false` means local-only commits).
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Discover planning context directly from Cadence state:
    - `python3 "$CADENCE_SCRIPTS_DIR/run-planner.py" --project-root "$PROJECT_ROOT" discover`
 3. Optionally enrich discovery with targeted fuzzy search when details are unclear:

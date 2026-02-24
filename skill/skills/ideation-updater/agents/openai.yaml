@@ -5,7 +5,7 @@ interface:
     Follow skills/ideation-updater/SKILL.md and its payload contract.
     Run scripts/run-skill-entry-gate.py --require-cadence, then use its JSON output for PROJECT_ROOT
     (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode (repo_enabled).
-    Never edit .cadence/cadence.json manually.
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Enforce the strict user-facing response templates from skills/ideation-updater/SKILL.md.
     Review current ideation, discuss updates, rebuild the full ideation object with synchronized research_agenda,
     then run scripts/prepare-ideation-research.py and scripts/inject-ideation.py from PROJECT_ROOT.

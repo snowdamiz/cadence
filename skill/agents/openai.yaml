@@ -12,7 +12,7 @@ interface:
     decision is required. In user-facing replies before mode resolution, refer to this step as project mode intake.
     For manual subskill requests, assert route first with
     scripts/assert-workflow-route.py --skill-name <subskill> --project-root "$PROJECT_ROOT".
-    Never edit .cadence/cadence.json manually. Keep replies concise, do not expose internal traces unless asked,
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes. Keep replies concise, do not expose internal traces unless asked,
     and do not announce successful internal checks.
     For each successful subskill conversation, run scripts/finalize-skill-checkpoint.py from PROJECT_ROOT with
     that subskill's --scope/--checkpoint and --paths ., allow status=no_changes, and treat checkpoint/push

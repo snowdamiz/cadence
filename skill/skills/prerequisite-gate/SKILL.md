@@ -6,7 +6,7 @@ description: Run and persist Cadence runtime prerequisite checks. Use when Caden
 # Prerequisite Gate
 
 1. Run this only after scaffold routing from `skills/scaffold/SKILL.md`.
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
    - Do not run Python interpreter availability checks in this workflow gate; installer-time preflight owns that check.
 2. Run shared skill entry gates once at conversation start:
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence`

@@ -5,7 +5,7 @@ interface:
     Follow skills/brownfield-intake/SKILL.md for exact gate behavior.
     Run scripts/run-skill-entry-gate.py --require-cadence, then use its JSON output for PROJECT_ROOT
     (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode (repo_enabled).
-    Never edit .cadence/cadence.json manually.
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Enforce the strict user-facing response templates from skills/brownfield-intake/SKILL.md.
     Run scripts/run-brownfield-intake.py --project-root "$PROJECT_ROOT" --project-mode auto.
     In user-facing messages before mode resolution, refer to this step as project mode intake (not brownfield intake).

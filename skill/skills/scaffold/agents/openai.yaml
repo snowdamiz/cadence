@@ -9,7 +9,7 @@ interface:
     CADENCE_SCRIPTS_DIR (cadence_scripts_dir) and push/local-only mode (repo_enabled).
     For .cadence policy updates, run scripts/configure-cadence-gitignore.py with --mode and
     --gitignore-path "$PROJECT_ROOT/.gitignore" only (do not pass --project-root).
-    Never edit .cadence/cadence.json manually.
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Enforce the strict user-facing response templates from skills/scaffold/SKILL.md.
     During root Cadence first-run bootstrap, do not stop after scaffold success; continue routing so
     prerequisite-gate runs automatically in the same turn when no scaffold decision is pending.

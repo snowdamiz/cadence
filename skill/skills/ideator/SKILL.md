@@ -6,7 +6,7 @@ description: Guide users from a rough concept to a fully defined project idea th
 # Ideator
 
 1. Keep user-facing responses focused on ideation content. Do not expose internal skill-routing, command output, or execution traces unless the user explicitly asks.
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Run shared skill entry gates once at conversation start:
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name ideator`
    - Parse JSON and store `PROJECT_ROOT` from `project_root`, `CADENCE_SCRIPTS_DIR` from `cadence_scripts_dir`, and push mode from `repo_enabled` (`false` means local-only commits).

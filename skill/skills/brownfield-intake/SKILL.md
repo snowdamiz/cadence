@@ -8,7 +8,7 @@ description: Classify project mode (greenfield vs brownfield) and capture a dete
 1. Run shared skill entry gates once at conversation start:
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence`
    - Parse JSON and store `PROJECT_ROOT` from `project_root`, `CADENCE_SCRIPTS_DIR` from `cadence_scripts_dir`, and push mode from `repo_enabled` (`false` means local-only commits).
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Run the intake gate in auto mode (default behavior):
    - `python3 "$CADENCE_SCRIPTS_DIR/run-brownfield-intake.py" --project-root "$PROJECT_ROOT" --project-mode auto`
 3. Parse the intake JSON response and store `mode`, `mode_source`, and `detected_mode` for user-facing summary.

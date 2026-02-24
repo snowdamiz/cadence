@@ -8,7 +8,7 @@ description: Read and route project lifecycle progress from .cadence/cadence.jso
 1. Run shared skill entry gates once at conversation start:
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence --include-workflow-state`
    - Parse JSON and store `PROJECT_ROOT` from `project_root`, `CADENCE_SCRIPTS_DIR` from `cadence_scripts_dir`, push mode from `repo_enabled` (`false` means local-only commits), and workflow payload from `workflow_state`.
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Always report current progress first with route-aware formatting:
    - current phase title
    - what comes next

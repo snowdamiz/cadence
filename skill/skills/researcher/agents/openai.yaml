@@ -6,9 +6,12 @@ interface:
     On entry, run scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name researcher, then use its
     JSON output for PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode
     (repo_enabled).
-    Never edit .cadence/cadence.json manually.
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Run exactly one pass per chat: scripts/run-research-pass.py start, research only that pass's topics,
-    then persist with scripts/run-research-pass.py complete. Do not run a second pass in the same chat.
+    and use pass.topics latest_summary/unresolved_questions as prior-pass context.
+    If extra Cadence context is needed, use scripts/get-ideation.py or scripts/query-ideation-research.py
+    (with --project-root) instead of reading cadence.json directly, then persist with
+    scripts/run-research-pass.py complete. Do not run a second pass in the same chat.
     Enforce the strict user-facing return templates defined in skills/researcher/SKILL.md for every successful run,
     and do not add extra prose outside those templates.
     If more work remains, include the full required response sections and end with:

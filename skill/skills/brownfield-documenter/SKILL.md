@@ -8,7 +8,7 @@ description: Perform deep evidence-based analysis of an existing codebase and pe
 1. Run shared skill entry gates once at conversation start:
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence`
    - Parse JSON and store `PROJECT_ROOT` from `project_root`, `CADENCE_SCRIPTS_DIR` from `cadence_scripts_dir`, and push mode from `repo_enabled` (`false` means local-only commits).
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Run brownfield discovery context extraction:
    - `python3 "$CADENCE_SCRIPTS_DIR/run-brownfield-documentation.py" --project-root "$PROJECT_ROOT" discover`
 3. `run-brownfield-documentation.py` performs workflow route assertion internally; if assertion fails, stop and surface the exact error.

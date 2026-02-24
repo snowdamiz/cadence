@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from ideation_research import ResearchAgendaValidationError, normalize_ideation_research, slugify
+from project_root import resolve_project_root, write_project_root_hint
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 FUZZY_TEXT_FIELDS: tuple[str, ...] = (
     "block.title",
@@ -32,9 +35,17 @@ def parse_args() -> argparse.Namespace:
         description="Query ideation research agenda by block, topic, entity, and metadata filters."
     )
     parser.add_argument(
+        "--project-root",
+        default="",
+        help="Explicit project root path override when reading from cadence state.",
+    )
+    parser.add_argument(
         "--file",
-        default=str(Path(".cadence") / "cadence.json"),
-        help="Path to cadence.json or a raw ideation payload JSON file",
+        default="",
+        help=(
+            "Path to cadence.json or a raw ideation payload JSON file. "
+            "If omitted, reads <project_root>/.cadence/cadence.json."
+        ),
     )
     parser.add_argument("--block-id", help="Filter by research block id")
     parser.add_argument("--topic-id", help="Filter by topic id")
@@ -68,6 +79,26 @@ def parse_args() -> argparse.Namespace:
         help="Include related owner block and linked entity details",
     )
     return parser.parse_args()
+
+
+def resolve_payload_path(args: argparse.Namespace) -> Path:
+    explicit_file = str(getattr(args, "file", "") or "").strip()
+    if explicit_file:
+        return Path(explicit_file)
+
+    explicit_project_root = str(getattr(args, "project_root", "") or "").strip() or None
+    try:
+        project_root, _ = resolve_project_root(
+            script_dir=SCRIPT_DIR,
+            explicit_project_root=explicit_project_root,
+            require_cadence=False,
+            allow_hint=True,
+        )
+    except ValueError as exc:
+        raise ValueError(str(exc)) from exc
+
+    write_project_root_hint(SCRIPT_DIR, project_root)
+    return project_root / ".cadence" / "cadence.json"
 
 
 def read_payload(path: Path) -> tuple[dict[str, Any], str]:
@@ -236,7 +267,11 @@ def _resolve_entity_id(raw_entity: str, entity_registry: list[dict[str, Any]]) -
 
 def main() -> int:
     args = parse_args()
-    payload_path = Path(args.file)
+    try:
+        payload_path = resolve_payload_path(args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
 
     if not 0.0 <= args.fuzzy_threshold <= 1.0:
         print("INVALID_FUZZY_THRESHOLD: must be between 0.0 and 1.0", file=sys.stderr)

@@ -6,7 +6,7 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
 # Scaffold
 
 1. Resolve project root by running `python3 ../../scripts/resolve-project-root.py --project-root "$PWD"` and store stdout in `PROJECT_ROOT`.
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Run `python3 ../../scripts/run-scaffold-gate.py --project-root "$PROJECT_ROOT"` (resolve this relative path from this sub-skill directory) and parse the JSON response.
 3. `run-scaffold-gate.py` performs workflow route assertion internally; if it errors, stop and surface the exact error to the user.
 4. Run shared skill entry gates after scaffold initialization:

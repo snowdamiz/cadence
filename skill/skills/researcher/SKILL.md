@@ -9,12 +9,17 @@ description: Execute ideation research agenda topics through dynamic multi-pass 
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name researcher`
    - Parse JSON and store `PROJECT_ROOT` from `project_root`, `CADENCE_SCRIPTS_DIR` from `cadence_scripts_dir`, and push mode from `repo_enabled` (`false` means local-only commits).
    - If route assertion fails, stop and surface the exact error to the user.
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Start exactly one research pass for this conversation by running `python3 "$CADENCE_SCRIPTS_DIR/run-research-pass.py" --project-root "$PROJECT_ROOT" start --ack-handoff` and parse the JSON output.
 3. If start output returns `research_complete=true`, report that all research topics are complete and skip pass execution.
 4. If start output returns a `pass`, research only the topics listed in that pass:
    - Use web browsing for current, source-backed information.
    - Keep scope limited to the pass topics; do not expand into other pending topics.
+   - Use `pass.topics[].latest_summary` and `pass.topics[].unresolved_questions` from `start` output as prior-pass context.
+   - If additional Cadence context is required, read it only through scripts:
+     - `python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py" --project-root "$PROJECT_ROOT"`
+     - `python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py" --project-root "$PROJECT_ROOT" --topic-id "<topic_id>"`
+   - Never run direct file reads/searches against `.cadence/cadence.json` (for example `cat`, `rg`, `jq`, or file-read tools).
    - Capture concise findings and source links per topic.
 5. Build a pass result JSON payload in-memory with this shape:
    - `pass_summary` (string)

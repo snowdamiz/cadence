@@ -6,7 +6,7 @@ interface:
     Run scripts/run-skill-entry-gate.py --require-cadence --include-workflow-state, then use its JSON output for
     PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), push/local-only mode (repo_enabled),
     and workflow payload (workflow_state).
-    Never edit .cadence/cadence.json manually.
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Enforce the strict user-facing response templates from skills/project-progress/SKILL.md.
     Summarize progress in user-facing terms and for continue/resume requests route via workflow_state.route.
     When workflow_state.route.skill_name is researcher (or next_item.id is task-research), run

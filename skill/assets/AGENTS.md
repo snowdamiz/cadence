@@ -13,7 +13,7 @@
 - One tack per subagent for focused execution
 
 ### 3. Self-Improvement Loop
-- After ANY correction from the user: record the lesson inside `.cadence/cadence.json` (for example `project-details.lessons`)
+- After ANY correction from the user: record the lesson via Cadence scripts (never by reading or editing `.cadence/cadence.json` directly)
 - Write rules for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
@@ -40,20 +40,20 @@
 ### 7. User-Facing Hygiene
 - Keep user-facing messages outcome-focused
 - Do not expose internal routing, command traces, terminal transcripts, or timing metadata unless the user explicitly asks
-- Never manually edit `.cadence/cadence.json`; use Cadence scripts for all state updates
+- Never read or edit `.cadence/cadence.json` directly; use Cadence scripts for all state reads and updates
 
 ## Task Management
 
-1. **Plan First**: track plan state in `.cadence/cadence.json` workflow items
+1. **Plan First**: track plan state in `.cadence/cadence.json` workflow items via Cadence scripts
 2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: update workflow item status as work advances
+3. **Track Progress**: update workflow item status as work advances via Cadence scripts
 4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: persist structured results in `.cadence/cadence.json`
-6. **Capture Lessons**: update `.cadence/cadence.json` only
+5. **Document Results**: persist structured results in `.cadence/cadence.json` via Cadence scripts
+6. **Capture Lessons**: update `.cadence/cadence.json` through scripts only
 
 ## Core Principles
 
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
-- **Script-Only State Writes**: `.cadence/cadence.json` must only be changed via existing Cadence scripts.
+- **Script-Only State Access**: `.cadence/cadence.json` must only be read/changed via existing Cadence scripts.

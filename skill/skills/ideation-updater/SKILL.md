@@ -6,7 +6,7 @@ description: Discuss, audit, and update existing project ideation in .cadence/ca
 # Ideation Updater
 
 1. Keep user-facing responses focused on ideation content. Do not expose internal skill-routing, command output, or execution traces unless the user explicitly asks.
-   - Never manually edit `.cadence/cadence.json`; all Cadence state writes must go through Cadence scripts.
+   - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Invoke this skill only when user intent is to discuss or modify already-saved ideation.
 3. Route first-time concept discovery to Cadence new-chat handoff: `Start a new chat and either say "help me define my project" or share your project brief.`
 4. Run shared skill entry gates once at conversation start:
