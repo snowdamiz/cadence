@@ -29,6 +29,39 @@ def build_intake_ready_state() -> dict:
 
 
 class RunBrownfieldIntakeTests(unittest.TestCase):
+    def test_auto_mode_detects_greenfield_for_clean_scaffold(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir)
+            (project_root / ".cadence").mkdir(parents=True, exist_ok=True)
+            cadence_json = project_root / ".cadence" / "cadence.json"
+            cadence_json.write_text(json.dumps(build_intake_ready_state(), indent=4) + "\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUN_INTAKE_SCRIPT),
+                    "--project-root",
+                    str(project_root),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "ok")
+            self.assertEqual(payload["mode"], "greenfield")
+            self.assertEqual(payload["task_status"], "skipped")
+            self.assertEqual(payload["inventory_summary"]["file_count"], 0)
+            self.assertEqual(payload["inventory_summary"]["meaningful_file_count"], 0)
+
+            updated = json.loads(cadence_json.read_text(encoding="utf-8"))
+            self.assertEqual(updated["state"]["project-mode"], "greenfield")
+            self.assertTrue(updated["state"]["brownfield-intake-completed"])
+            self.assertEqual(updated["project-details"]["mode"], "greenfield")
+            self.assertEqual(updated["project-details"]["brownfield_baseline"], {})
+            self.assertEqual(updated["workflow"]["next_route"]["skill_name"], "ideator")
+
     def test_auto_mode_detects_brownfield_and_persists_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             project_root = Path(tmp_dir)
@@ -61,6 +94,40 @@ class RunBrownfieldIntakeTests(unittest.TestCase):
             self.assertEqual(updated["project-details"]["mode"], "brownfield")
             self.assertIn("brownfield_baseline", updated["project-details"])
             self.assertEqual(updated["workflow"]["next_route"]["skill_name"], "brownfield-documenter")
+
+    def test_auto_mode_ignores_bootstrap_only_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir)
+            (project_root / ".cadence").mkdir(parents=True, exist_ok=True)
+            cadence_json = project_root / ".cadence" / "cadence.json"
+            cadence_json.write_text(json.dumps(build_intake_ready_state(), indent=4) + "\n", encoding="utf-8")
+            (project_root / ".gitignore").write_text(".cadence/\n", encoding="utf-8")
+            (project_root / "README.md").write_text("# New Project\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUN_INTAKE_SCRIPT),
+                    "--project-root",
+                    str(project_root),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "ok")
+            self.assertEqual(payload["mode"], "greenfield")
+            self.assertEqual(payload["task_status"], "skipped")
+            self.assertEqual(payload["inventory_summary"]["file_count"], 2)
+            self.assertEqual(payload["inventory_summary"]["meaningful_file_count"], 0)
+
+            updated = json.loads(cadence_json.read_text(encoding="utf-8"))
+            self.assertEqual(updated["state"]["project-mode"], "greenfield")
+            self.assertEqual(updated["project-details"]["mode"], "greenfield")
+            self.assertEqual(updated["project-details"]["brownfield_baseline"], {})
+            self.assertEqual(updated["workflow"]["next_route"]["skill_name"], "ideator")
 
     def test_explicit_greenfield_skips_intake_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

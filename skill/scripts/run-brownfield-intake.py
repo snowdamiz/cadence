@@ -64,6 +64,28 @@ KNOWN_MANIFESTS = {
     "Dockerfile",
 }
 
+NON_SIGNAL_TOP_LEVEL_FILES = {
+    ".gitignore",
+    ".gitattributes",
+    ".editorconfig",
+    ".npmrc",
+    ".nvmrc",
+    ".python-version",
+    ".node-version",
+    ".tool-versions",
+    ".env.example",
+    ".env.sample",
+    ".env.template",
+    "README",
+    "README.md",
+    "README.txt",
+    "LICENSE",
+    "LICENSE.md",
+    "LICENSE.txt",
+    "COPYING",
+    "CODEOWNERS",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -195,10 +217,18 @@ def detect_git_details(project_root: Path) -> dict[str, Any]:
     }
 
 
-def iter_inventory_paths(project_root: Path, *, max_files: int) -> tuple[list[str], int, int]:
+def is_meaningful_inventory_path(rel_path: str) -> bool:
+    path = Path(rel_path)
+    if len(path.parts) > 1:
+        return True
+    return path.name not in NON_SIGNAL_TOP_LEVEL_FILES
+
+
+def iter_inventory_paths(project_root: Path, *, max_files: int) -> tuple[list[str], int, int, int]:
     file_paths: list[str] = []
     file_count = 0
     directory_count = 0
+    meaningful_file_count = 0
 
     for root, dirs, files in os.walk(project_root):
         rel_root = Path(root).resolve().relative_to(project_root)
@@ -210,11 +240,13 @@ def iter_inventory_paths(project_root: Path, *, max_files: int) -> tuple[list[st
                 continue
             rel_path = (rel_root / filename).as_posix() if str(rel_root) != "." else filename
             file_count += 1
+            if is_meaningful_inventory_path(rel_path):
+                meaningful_file_count += 1
             if len(file_paths) < max_files:
                 file_paths.append(rel_path)
 
     file_paths.sort()
-    return file_paths, file_count, directory_count
+    return file_paths, file_count, directory_count, meaningful_file_count
 
 
 def infer_languages(file_paths: list[str]) -> list[dict[str, Any]]:
@@ -308,11 +340,11 @@ def top_level_entries(project_root: Path, *, max_entries: int) -> list[str]:
 
 
 def build_baseline(project_root: Path, *, max_entries: int, max_files: int) -> tuple[dict[str, Any], str]:
-    file_paths, total_file_count, total_directory_count = iter_inventory_paths(
+    file_paths, total_file_count, total_directory_count, meaningful_file_count = iter_inventory_paths(
         project_root,
         max_files=max_files,
     )
-    detected_mode = "brownfield" if total_file_count > 0 else "greenfield"
+    detected_mode = "brownfield" if meaningful_file_count > 0 else "greenfield"
 
     manifests = collect_manifests(file_paths)
     ci_workflows = collect_ci_workflows(file_paths)
@@ -322,6 +354,7 @@ def build_baseline(project_root: Path, *, max_entries: int, max_files: int) -> t
         "inventory": {
             "top_level_entries": top_level_entries(project_root, max_entries=max_entries),
             "file_count": total_file_count,
+            "meaningful_file_count": meaningful_file_count,
             "directory_count": total_directory_count,
             "inspected_file_count": len(file_paths),
             "languages": infer_languages(file_paths),
@@ -427,6 +460,7 @@ def main() -> int:
         "task_status": task_status,
         "inventory_summary": {
             "file_count": int(inventory.get("file_count", 0)),
+            "meaningful_file_count": int(inventory.get("meaningful_file_count", 0)),
             "directory_count": int(inventory.get("directory_count", 0)),
             "manifest_count": len(inventory.get("manifests", []))
             if isinstance(inventory.get("manifests"), list)
