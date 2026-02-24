@@ -54,6 +54,20 @@ def load_config() -> dict[str, Any]:
     return data
 
 
+def truncate_subject_fragment(text: str, max_length: int) -> str:
+    if max_length <= 0:
+        return ""
+    if len(text) <= max_length:
+        return text
+    if max_length <= 3:
+        return text[:max_length]
+
+    clipped = text[: max_length - 3].rstrip()
+    if not clipped:
+        clipped = text[: max_length - 3]
+    return f"{clipped}..."
+
+
 def build_commit_message(
     config: dict[str, Any],
     scope: str,
@@ -94,9 +108,14 @@ def build_commit_message(
     except (TypeError, ValueError) as exc:
         raise CheckpointError("COMMIT_CONFIG_INVALID_SUBJECT_MAX_LENGTH") from exc
 
-    base_message = f"{commit_type}({scope}): {summary}"
-    message = base_message
+    prefix = f"{commit_type}({scope}): "
+    if len(prefix) >= max_length:
+        raise CheckpointError(f"COMMIT_SUBJECT_PREFIX_TOO_LONG: {len(prefix)}>{max_length}")
 
+    available_for_summary = max_length - len(prefix)
+    summary_text = truncate_subject_fragment(summary, available_for_summary)
+
+    message = f"{prefix}{summary_text}"
     if suffix:
         compact_suffix = suffix
         if compact_suffix.startswith("[") and compact_suffix.endswith("]") and len(compact_suffix) >= 2:
@@ -105,10 +124,10 @@ def build_commit_message(
         compact_suffix = " ".join(part for part in compact_suffix.split() if part)
 
         if compact_suffix:
-            allowed_content_len = max_length - len(base_message) - 3
+            allowed_content_len = max_length - len(message) - 3
             if allowed_content_len > 0:
                 trimmed_suffix = compact_suffix[:allowed_content_len]
-                message = f"{base_message} [{trimmed_suffix}]"
+                message = f"{message} [{trimmed_suffix}]"
 
     if len(message) > max_length:
         raise CheckpointError(f"COMMIT_SUBJECT_TOO_LONG: {len(message)}>{max_length}")
