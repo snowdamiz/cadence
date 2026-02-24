@@ -17,7 +17,14 @@ RUN_RESEARCH_PASS_SCRIPT = SCRIPTS_DIR / "run-research-pass.py"
 
 def build_cadence_state() -> dict:
     data = default_data()
-    for task_id in ("task-scaffold", "task-prerequisite-gate", "task-brownfield-intake", "task-ideation"):
+    data.setdefault("state", {})["project-mode"] = "greenfield"
+    for task_id in (
+        "task-scaffold",
+        "task-prerequisite-gate",
+        "task-brownfield-intake",
+        "task-brownfield-documentation",
+        "task-ideation",
+    ):
         data, found = set_workflow_item_status(
             data,
             item_id=task_id,

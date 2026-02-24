@@ -19,8 +19,9 @@ description: Classify project mode (greenfield vs brownfield) and capture a dete
    - detected manifests/tooling
    - CI workflows
    - monorepo signal
-8. If mode is `greenfield`, state that brownfield baseline capture was skipped and workflow advanced.
-9. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope brownfield-intake --checkpoint baseline-captured --paths .`.
-10. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-11. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
-12. In normal user-facing updates, report mode decision and baseline outcome without raw command traces or internal routing details unless explicitly requested.
+8. If mode is `brownfield`, tell the user this gate will route to `skills/brownfield-documenter/SKILL.md` next (not ideator), and end with this exact handoff line: `Start a new chat and say "document my existing project".`
+9. If mode is `greenfield`, state that brownfield baseline capture was skipped and workflow advanced.
+10. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope brownfield-intake --checkpoint baseline-captured --paths .`.
+11. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+12. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
+13. In normal user-facing updates, report mode decision and baseline outcome without raw command traces or internal routing details unless explicitly requested.

@@ -60,7 +60,7 @@ class RunBrownfieldIntakeTests(unittest.TestCase):
             self.assertTrue(updated["state"]["brownfield-intake-completed"])
             self.assertEqual(updated["project-details"]["mode"], "brownfield")
             self.assertIn("brownfield_baseline", updated["project-details"])
-            self.assertEqual(updated["workflow"]["next_route"]["skill_name"], "ideator")
+            self.assertEqual(updated["workflow"]["next_route"]["skill_name"], "brownfield-documenter")
 
     def test_explicit_greenfield_skips_intake_task(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -92,6 +92,7 @@ class RunBrownfieldIntakeTests(unittest.TestCase):
             self.assertEqual(updated["state"]["project-mode"], "greenfield")
             self.assertEqual(updated["project-details"]["mode"], "greenfield")
             self.assertEqual(updated["project-details"]["brownfield_baseline"], {})
+            self.assertEqual(updated["workflow"]["next_route"]["skill_name"], "ideator")
 
 
 if __name__ == "__main__":

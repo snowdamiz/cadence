@@ -13,10 +13,11 @@
 - One tack per subagent for focused execution
 
 ### 3. Self-Improvement Loop
-- After ANY correction from the user: update `.cadence/tasks/lessons.md` with the pattern
+- After ANY correction from the user: record the lesson inside `.cadence/cadence.json` (for example `project-details.lessons`)
 - Write rules for yourself that prevent the same mistake
 - Ruthlessly iterate on these lessons until mistake rate drops
 - Review lessons at session start for relevant project
+- Do not create ad-hoc tracking files like `.cadence/tasks/*`
 
 ### 4. Verification Before Done
 - Never mark a task complete without proving it works
@@ -42,15 +43,15 @@
 
 ## Task Management
 
-1. **Plan First**: Write plan to `.cadence/tasks/todo.md` with checkable items
+1. **Plan First**: track plan state in `.cadence/cadence.json` workflow items
 2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
+3. **Track Progress**: update workflow item status as work advances
 4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review section to `.cadence/tasks/todo.md`
-6. **Capture Lessons**: Update `.cadence/tasks/lessons.md` after corrections
+5. **Document Results**: persist structured results in `.cadence/cadence.json`
+6. **Capture Lessons**: update `.cadence/cadence.json` only
 
 ## Core Principles
 
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Minimat Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.

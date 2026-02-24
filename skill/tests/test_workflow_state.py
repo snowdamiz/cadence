@@ -20,7 +20,7 @@ def find_item(items: list[dict], item_id: str) -> dict | None:
 
 
 class WorkflowStateStatusTests(unittest.TestCase):
-    def test_default_plan_includes_brownfield_intake_before_ideation(self) -> None:
+    def test_default_plan_includes_brownfield_phases_before_ideation(self) -> None:
         data = default_data()
         wave = find_item(data["workflow"]["plan"], "wave-initialize-cadence")
         self.assertIsNotNone(wave)
@@ -28,8 +28,39 @@ class WorkflowStateStatusTests(unittest.TestCase):
         children = wave.get("children", [])
         order = [child.get("id") for child in children if isinstance(child, dict)]
         self.assertIn("task-brownfield-intake", order)
+        self.assertIn("task-brownfield-documentation", order)
         self.assertLess(order.index("task-prerequisite-gate"), order.index("task-brownfield-intake"))
-        self.assertLess(order.index("task-brownfield-intake"), order.index("task-ideation"))
+        self.assertLess(order.index("task-brownfield-intake"), order.index("task-brownfield-documentation"))
+        self.assertLess(order.index("task-brownfield-documentation"), order.index("task-ideation"))
+
+    def test_brownfield_mode_routes_to_documenter_not_ideator(self) -> None:
+        data = default_data()
+        state = data.setdefault("state", {})
+        state["project-mode"] = "brownfield"
+        data, found = set_workflow_item_status(
+            data,
+            item_id="task-scaffold",
+            status="complete",
+            cadence_dir_exists=True,
+        )
+        self.assertTrue(found)
+        data, found = set_workflow_item_status(
+            data,
+            item_id="task-prerequisite-gate",
+            status="complete",
+            cadence_dir_exists=True,
+        )
+        self.assertTrue(found)
+        data, found = set_workflow_item_status(
+            data,
+            item_id="task-brownfield-intake",
+            status="complete",
+            cadence_dir_exists=True,
+        )
+        self.assertTrue(found)
+
+        route = data["workflow"]["next_route"]
+        self.assertEqual(route.get("skill_name"), "brownfield-documenter")
 
     def test_non_binary_legacy_task_statuses_are_preserved(self) -> None:
         for status in ("in_progress", "blocked", "skipped"):

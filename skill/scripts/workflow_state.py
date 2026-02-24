@@ -12,7 +12,7 @@ from typing import Any
 
 from ideation_research import ensure_ideation_research_defaults
 
-WORKFLOW_SCHEMA_VERSION = 4
+WORKFLOW_SCHEMA_VERSION = 5
 VALID_STATUSES = {"pending", "in_progress", "complete", "blocked", "skipped"}
 COMPLETED_STATUSES = {"complete", "skipped"}
 LEGACY_PRESERVE_STATUSES = {"in_progress", "blocked", "skipped"}
@@ -38,6 +38,11 @@ DEFAULT_ROUTE_BY_ITEM_ID = {
         "skill_name": "brownfield-intake",
         "skill_path": "skills/brownfield-intake/SKILL.md",
         "reason": "Project mode and existing codebase baseline have not been captured yet.",
+    },
+    "task-brownfield-documentation": {
+        "skill_name": "brownfield-documenter",
+        "skill_path": "skills/brownfield-documenter/SKILL.md",
+        "reason": "Brownfield project context has not been documented into ideation yet.",
     },
     "task-research": {
         "skill_name": "researcher",
@@ -104,6 +109,12 @@ def default_workflow_plan() -> list[dict[str, Any]]:
                                     "route": DEFAULT_ROUTE_BY_ITEM_ID["task-brownfield-intake"],
                                 },
                                 {
+                                    "id": "task-brownfield-documentation",
+                                    "kind": "task",
+                                    "title": "Document existing project context",
+                                    "route": DEFAULT_ROUTE_BY_ITEM_ID["task-brownfield-documentation"],
+                                },
+                                {
                                     "id": "task-ideation",
                                     "kind": "task",
                                     "title": "Complete ideation",
@@ -134,6 +145,7 @@ def default_data() -> dict[str, Any]:
             "repo-enabled": False,
             "project-mode": "unknown",
             "brownfield-intake-completed": False,
+            "brownfield-documentation-completed": False,
         },
         "project-details": {},
         "ideation": ensure_ideation_research_defaults({}),
@@ -208,6 +220,7 @@ def _normalize_plan(plan: Any) -> list[dict[str, Any]]:
         plan = default_workflow_plan()
     normalized = [_normalize_item(item, f"item-{index + 1}") for index, item in enumerate(plan)]
     _ensure_brownfield_intake_task(normalized)
+    _ensure_brownfield_documentation_task(normalized)
     _ensure_research_task(normalized)
     return normalized
 
@@ -281,6 +294,77 @@ def _ensure_brownfield_intake_task(plan: list[dict[str, Any]]) -> None:
 
     if not append_to_first_container(plan):
         plan.append(deepcopy(intake_task))
+
+
+def _ensure_brownfield_documentation_task(plan: list[dict[str, Any]]) -> None:
+    if _find_item_by_id(plan, "task-brownfield-documentation") is not None:
+        return
+
+    doc_task = _normalize_item(
+        {
+            "id": "task-brownfield-documentation",
+            "kind": "task",
+            "title": "Document existing project context",
+            "route": DEFAULT_ROUTE_BY_ITEM_ID["task-brownfield-documentation"],
+        },
+        "task-brownfield-documentation",
+    )
+
+    def inject_after_intake(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+
+            for index, child in enumerate(children):
+                if not isinstance(child, dict):
+                    continue
+                if child.get("id") == "task-brownfield-intake":
+                    children.insert(index + 1, deepcopy(doc_task))
+                    return True
+
+            if inject_after_intake(children):
+                return True
+        return False
+
+    if inject_after_intake(plan):
+        return
+
+    def inject_before_ideation(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+
+            for index, child in enumerate(children):
+                if not isinstance(child, dict):
+                    continue
+                if child.get("id") == "task-ideation":
+                    children.insert(index, deepcopy(doc_task))
+                    return True
+
+            if inject_before_ideation(children):
+                return True
+        return False
+
+    if inject_before_ideation(plan):
+        return
+
+    # Fallback for custom plans; append to the first actionable container.
+    def append_to_first_container(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+            if children and all(isinstance(child, dict) and not child.get("children") for child in children):
+                children.append(deepcopy(doc_task))
+                return True
+            if append_to_first_container(children):
+                return True
+        return False
+
+    if not append_to_first_container(plan):
+        plan.append(deepcopy(doc_task))
 
 
 def _ensure_research_task(plan: list[dict[str, Any]]) -> None:
@@ -431,13 +515,18 @@ def _collect_nodes(
 def _legacy_completion_map(data: dict[str, Any], *, cadence_dir_exists: bool) -> dict[str, bool]:
     state = data.get("state")
     state = state if isinstance(state, dict) else {}
+    mode = _normalize_project_mode(state.get("project-mode", "unknown"))
     brownfield_completed = state.get("brownfield-intake-completed")
     if brownfield_completed is None:
         brownfield_completed = state.get("ideation-completed", False)
+    brownfield_doc_completed = state.get("brownfield-documentation-completed")
+    if brownfield_doc_completed is None:
+        brownfield_doc_completed = bool(mode == "brownfield" and state.get("ideation-completed", False))
     return {
         "task-scaffold": bool(cadence_dir_exists),
         "task-prerequisite-gate": bool(data.get("prerequisites-pass", False)),
         "task-brownfield-intake": bool(brownfield_completed),
+        "task-brownfield-documentation": bool(brownfield_doc_completed),
         "task-ideation": bool(state.get("ideation-completed", False)),
         "task-research": bool(state.get("research-completed", False)),
     }
@@ -471,14 +560,22 @@ def _sync_legacy_flags_from_plan(data: dict[str, Any], plan: list[dict[str, Any]
 
     prerequisite_item = _find_item_by_id(plan, "task-prerequisite-gate")
     brownfield_item = _find_item_by_id(plan, "task-brownfield-intake")
+    brownfield_doc_item = _find_item_by_id(plan, "task-brownfield-documentation")
     ideation_item = _find_item_by_id(plan, "task-ideation")
     research_item = _find_item_by_id(plan, "task-research")
+    mode = _normalize_project_mode(state.get("project-mode", "unknown"))
 
     if prerequisite_item is not None:
         data["prerequisites-pass"] = _is_complete_status(_coerce_status(prerequisite_item.get("status")))
     if brownfield_item is not None:
         state["brownfield-intake-completed"] = _is_complete_status(_coerce_status(brownfield_item.get("status")))
-    if ideation_item is not None:
+    if brownfield_doc_item is not None:
+        state["brownfield-documentation-completed"] = _is_complete_status(
+            _coerce_status(brownfield_doc_item.get("status"))
+        )
+    if mode == "brownfield":
+        state["ideation-completed"] = bool(state.get("brownfield-documentation-completed", False))
+    elif ideation_item is not None:
         state["ideation-completed"] = _is_complete_status(_coerce_status(ideation_item.get("status")))
     if research_item is not None:
         state["research-completed"] = _is_complete_status(_coerce_status(research_item.get("status")))
@@ -489,6 +586,29 @@ def _normalize_project_mode(value: Any) -> str:
     if mode not in {"unknown", "greenfield", "brownfield"}:
         return "unknown"
     return mode
+
+
+def _apply_project_mode_status_overrides(plan: list[dict[str, Any]], *, project_mode: str) -> None:
+    ideation_item = _find_item_by_id(plan, "task-ideation")
+    brownfield_doc_item = _find_item_by_id(plan, "task-brownfield-documentation")
+    if ideation_item is None and brownfield_doc_item is None:
+        return
+
+    mode = _normalize_project_mode(project_mode)
+    if mode == "greenfield":
+        if brownfield_doc_item is not None:
+            current = _coerce_status(brownfield_doc_item.get("status", "pending"))
+            if current == "pending":
+                brownfield_doc_item["status"] = "skipped"
+    elif mode == "brownfield":
+        if ideation_item is not None:
+            current = _coerce_status(ideation_item.get("status", "pending"))
+            if current == "pending":
+                ideation_item["status"] = "skipped"
+        if brownfield_doc_item is not None:
+            current = _coerce_status(brownfield_doc_item.get("status", "pending"))
+            if current == "skipped":
+                brownfield_doc_item["status"] = "pending"
 
 
 def _build_node_ref(node: dict[str, Any]) -> dict[str, Any]:
@@ -608,6 +728,11 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
     if "brownfield-intake-completed" not in state:
         state["brownfield-intake-completed"] = bool(state.get("ideation-completed", False))
     state["brownfield-intake-completed"] = bool(state.get("brownfield-intake-completed", False))
+    if "brownfield-documentation-completed" not in state:
+        state["brownfield-documentation-completed"] = bool(
+            state.get("project-mode") == "brownfield" and state.get("ideation-completed", False)
+        )
+    state["brownfield-documentation-completed"] = bool(state.get("brownfield-documentation-completed", False))
 
     if "prerequisites-pass" not in data:
         data["prerequisites-pass"] = False
@@ -631,6 +756,7 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
     workflow_seed = dict(workflow_seed) if isinstance(workflow_seed, dict) else {}
     plan = _normalize_plan(workflow_seed.get("plan"))
     _apply_legacy_task_states(plan, data, cadence_dir_exists=cadence_dir_exists)
+    _apply_project_mode_status_overrides(plan, project_mode=state.get("project-mode", "unknown"))
     _roll_up_plan(plan)
 
     data["workflow"] = _derive_workflow(workflow_seed, plan)

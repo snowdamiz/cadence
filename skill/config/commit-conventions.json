@@ -110,6 +110,12 @@
                 "baseline-captured": "capture project mode and baseline inventory"
             }
         },
+        "brownfield-documenter": {
+            "description": "Brownfield project documentation persistence",
+            "checkpoints": {
+                "documentation-captured": "persist brownfield ideation documentation from existing codebase"
+            }
+        },
         "ideation-updater": {
             "description": "Iterative ideation updates",
             "checkpoints": {

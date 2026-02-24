@@ -385,8 +385,12 @@ def main() -> int:
     if selected_mode == "greenfield":
         task_status = "skipped"
         project_details["brownfield_baseline"] = {}
+        state["brownfield-documentation-completed"] = False
     else:
         project_details["brownfield_baseline"] = baseline
+        state["brownfield-documentation-completed"] = False
+        state["ideation-completed"] = False
+        state["research-completed"] = False
 
     data, _ = set_workflow_item_status(
         data,
@@ -394,6 +398,21 @@ def main() -> int:
         status=task_status,
         cadence_dir_exists=True,
     )
+    if selected_mode == "greenfield":
+        data, _ = set_workflow_item_status(
+            data,
+            item_id="task-brownfield-documentation",
+            status="skipped",
+            cadence_dir_exists=True,
+        )
+    else:
+        for item_id in ("task-brownfield-documentation", "task-ideation", "task-research"):
+            data, _ = set_workflow_item_status(
+                data,
+                item_id=item_id,
+                status="pending",
+                cadence_dir_exists=True,
+            )
     data = reconcile_workflow_state(data, cadence_dir_exists=True)
     save_state(project_root, data)
 

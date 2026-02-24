@@ -6,10 +6,11 @@
         "cadence-scripts-dir": "",
         "repo-enabled": false,
         "project-mode": "unknown",
-        "brownfield-intake-completed": false
+        "brownfield-intake-completed": false,
+        "brownfield-documentation-completed": false
     },
     "workflow": {
-        "schema_version": 4,
+        "schema_version": 5,
         "plan": [
             {
                 "id": "milestone-foundation",
@@ -54,6 +55,16 @@
                                             "skill_name": "brownfield-intake",
                                             "skill_path": "skills/brownfield-intake/SKILL.md",
                                             "reason": "Project mode and existing codebase baseline have not been captured yet."
+                                        }
+                                    },
+                                    {
+                                        "id": "task-brownfield-documentation",
+                                        "kind": "task",
+                                        "title": "Document existing project context",
+                                        "route": {
+                                            "skill_name": "brownfield-documenter",
+                                            "skill_path": "skills/brownfield-documenter/SKILL.md",
+                                            "reason": "Brownfield project context has not been documented into ideation yet."
                                         }
                                     },
                                     {
