@@ -10,5 +10,7 @@ interface:
     Run exactly one pass per chat: scripts/run-research-pass.py start, research only that pass's topics,
     then persist with scripts/run-research-pass.py complete. Do not run a second pass in the same chat.
     If more work remains, end with: Start a new chat and say "continue research".
+    If research is complete and route advances to planner, end with:
+    Start a new chat and say "plan my project".
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope researcher
     --checkpoint research-pass-recorded --paths . (allow status=no_changes; treat failures as blocking).

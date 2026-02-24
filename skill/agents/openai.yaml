@@ -14,4 +14,4 @@ interface:
     For each successful subskill conversation, run scripts/finalize-skill-checkpoint.py from PROJECT_ROOT with
     that subskill's --scope/--checkpoint and --paths ., allow status=no_changes, and treat checkpoint/push
     failures as blocking.
-    Use the exact handoff lines in SKILL.md for ideator, brownfield-documenter, and researcher transitions.
+    Use the exact handoff lines in SKILL.md for ideator, brownfield-documenter, researcher, and planner transitions.

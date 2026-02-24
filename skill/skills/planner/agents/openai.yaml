@@ -1,0 +1,15 @@
+interface:
+  display_name: "Planner"
+  short_description: "Generate high-level greenfield milestones and phases roadmap"
+  default_prompt: >-
+    Follow skills/planner/SKILL.md for exact planning behavior.
+    Run scripts/run-skill-entry-gate.py --require-cadence --assert-skill-name planner, then use its JSON output
+    for PROJECT_ROOT (project_root), CADENCE_SCRIPTS_DIR (cadence_scripts_dir), and push/local-only mode
+    (repo_enabled).
+    Never edit .cadence/cadence.json manually.
+    Gather context with scripts/run-planner.py --project-root "$PROJECT_ROOT" discover, then draft and confirm a
+    roadmap containing milestones and phases only (no waves/tasks) using detail_level milestone_phase_v1.
+    Persist with scripts/run-planner.py --project-root "$PROJECT_ROOT" complete --stdin.
+    Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope planner
+    --checkpoint plan-created --paths . (allow status=no_changes; treat failures as blocking).
+    Keep replies concise and hide internal traces unless asked.

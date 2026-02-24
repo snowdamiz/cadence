@@ -30,7 +30,10 @@ description: Execute ideation research agenda topics through dynamic multi-pass 
    - `python3 "$CADENCE_SCRIPTS_DIR/run-research-pass.py" --project-root "$PROJECT_ROOT" complete --pass-id "<pass_id_from_start_output>" --stdin`
 7. Never start a second pass in the same conversation.
 8. If complete output returns `handoff_required=true`, end with this exact handoff line and stop: `Start a new chat and say "continue research".`
-9. If complete output returns `research_complete=true`, report that research phase is complete.
+9. If complete output returns `research_complete=true`:
+   - Run `python3 "$CADENCE_SCRIPTS_DIR/read-workflow-state.py" --project-root "$PROJECT_ROOT"` and inspect `route.skill_name`.
+   - If `route.skill_name` is `planner`, end with this exact handoff line: `Start a new chat and say "plan my project".`
+   - If workflow is complete, report that research and currently tracked workflow items are complete.
 10. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope researcher --checkpoint research-pass-recorded --paths .`.
 11. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 12. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.

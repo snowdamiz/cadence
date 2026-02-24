@@ -66,7 +66,7 @@ description: Structured project operating system for end-to-end greenfield or br
 
 ## Prerequisite Gate (Conditional)
 1. Invoke `skills/prerequisite-gate/SKILL.md` only when `route.skill_name` is `prerequisite-gate`.
-2. If `route.skill_name` is not `prerequisite-gate` (for example `brownfield-intake`, `brownfield-documenter`, `ideator`, or `researcher`), skip prerequisite gate and follow the active route instead.
+2. If `route.skill_name` is not `prerequisite-gate` (for example `brownfield-intake`, `brownfield-documenter`, `ideator`, `researcher`, or `planner`), skip prerequisite gate and follow the active route instead.
 
 ## Project Mode Intake Gate (Conditional)
 1. Invoke `skills/brownfield-intake/SKILL.md` only when `route.skill_name` is `brownfield-intake`.
@@ -107,6 +107,12 @@ description: Structured project operating system for end-to-end greenfield or br
 2. Enforce one research pass per conversation so context stays bounded.
 3. When the researcher flow reports additional passes remain (`handoff_required=true`), end with this exact line: `Start a new chat and say "continue research".`
 4. Continue routing to researcher on subsequent chats until workflow reports the research task complete.
+5. For greenfield projects, when research completes and route advances to `planner`, invoke `skills/planner/SKILL.md` in the next routed conversation.
+
+## Planner Flow
+1. If the workflow route is `planner`, invoke `skills/planner/SKILL.md`.
+2. Planner is greenfield-only and should not run for brownfield routes.
+3. Keep planner output at milestone/phase level in `.cadence/cadence.json` and defer waves/tasks decomposition to a later planning subskill.
 
 ## Ideation Update Flow
 1. If the user wants to modify or discuss existing ideation, invoke `skills/ideation-updater/SKILL.md`.

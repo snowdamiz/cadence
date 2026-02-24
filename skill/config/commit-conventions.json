@@ -133,6 +133,12 @@
             "checkpoints": {
                 "research-pass-recorded": "persist one ideation research pass"
             }
+        },
+        "planner": {
+            "description": "Greenfield roadmap planning persistence",
+            "checkpoints": {
+                "plan-created": "persist milestone and phase roadmap plan"
+            }
         }
     }
 }

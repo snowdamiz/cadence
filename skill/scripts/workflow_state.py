@@ -12,10 +12,11 @@ from typing import Any
 
 from ideation_research import ensure_ideation_research_defaults
 
-WORKFLOW_SCHEMA_VERSION = 5
+WORKFLOW_SCHEMA_VERSION = 6
 VALID_STATUSES = {"pending", "in_progress", "complete", "blocked", "skipped"}
 COMPLETED_STATUSES = {"complete", "skipped"}
 LEGACY_PRESERVE_STATUSES = {"in_progress", "blocked", "skipped"}
+PLANNING_STATUSES = {"pending", "in_progress", "complete", "skipped"}
 
 ROUTE_KEYS = {"skill_name", "skill_path", "reason"}
 DEFAULT_ROUTE_BY_ITEM_ID = {
@@ -48,6 +49,11 @@ DEFAULT_ROUTE_BY_ITEM_ID = {
         "skill_name": "researcher",
         "skill_path": "skills/researcher/SKILL.md",
         "reason": "Ideation research agenda has not been completed yet.",
+    },
+    "task-roadmap-planning": {
+        "skill_name": "planner",
+        "skill_path": "skills/planner/SKILL.md",
+        "reason": "Project roadmap planning has not been completed yet.",
     },
 }
 
@@ -126,6 +132,12 @@ def default_workflow_plan() -> list[dict[str, Any]]:
                                     "title": "Research ideation agenda",
                                     "route": DEFAULT_ROUTE_BY_ITEM_ID["task-research"],
                                 },
+                                {
+                                    "id": "task-roadmap-planning",
+                                    "kind": "task",
+                                    "title": "Plan project roadmap",
+                                    "route": DEFAULT_ROUTE_BY_ITEM_ID["task-roadmap-planning"],
+                                },
                             ],
                         }
                     ],
@@ -149,6 +161,17 @@ def default_data() -> dict[str, Any]:
         },
         "project-details": {},
         "ideation": ensure_ideation_research_defaults({}),
+        "planning": {
+            "version": 1,
+            "status": "pending",
+            "detail_level": "",
+            "decomposition_pending": True,
+            "created_at": "",
+            "updated_at": "",
+            "summary": "",
+            "assumptions": [],
+            "milestones": [],
+        },
         "workflow": {
             "schema_version": WORKFLOW_SCHEMA_VERSION,
             "plan": default_workflow_plan(),
@@ -222,6 +245,7 @@ def _normalize_plan(plan: Any) -> list[dict[str, Any]]:
     _ensure_brownfield_intake_task(normalized)
     _ensure_brownfield_documentation_task(normalized)
     _ensure_research_task(normalized)
+    _ensure_roadmap_planning_task(normalized)
     return normalized
 
 
@@ -418,6 +442,57 @@ def _ensure_research_task(plan: list[dict[str, Any]]) -> None:
         plan.append(deepcopy(research_task))
 
 
+def _ensure_roadmap_planning_task(plan: list[dict[str, Any]]) -> None:
+    if _find_item_by_id(plan, "task-roadmap-planning") is not None:
+        return
+
+    planning_task = _normalize_item(
+        {
+            "id": "task-roadmap-planning",
+            "kind": "task",
+            "title": "Plan project roadmap",
+            "route": DEFAULT_ROUTE_BY_ITEM_ID["task-roadmap-planning"],
+        },
+        "task-roadmap-planning",
+    )
+
+    def inject_after_research(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+
+            for index, child in enumerate(children):
+                if not isinstance(child, dict):
+                    continue
+                if child.get("id") == "task-research":
+                    children.insert(index + 1, deepcopy(planning_task))
+                    return True
+
+            if inject_after_research(children):
+                return True
+        return False
+
+    if inject_after_research(plan):
+        return
+
+    # Fallback for custom plans lacking task-research; append to first actionable container.
+    def append_to_first_container(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+            if children and all(isinstance(child, dict) and not child.get("children") for child in children):
+                children.append(deepcopy(planning_task))
+                return True
+            if append_to_first_container(children):
+                return True
+        return False
+
+    if not append_to_first_container(plan):
+        plan.append(deepcopy(planning_task))
+
+
 def _set_item_status(items: list[dict[str, Any]], item_id: str, status: str) -> bool:
     found = False
     for item in items:
@@ -515,6 +590,10 @@ def _collect_nodes(
 def _legacy_completion_map(data: dict[str, Any], *, cadence_dir_exists: bool) -> dict[str, bool]:
     state = data.get("state")
     state = state if isinstance(state, dict) else {}
+    planning = data.get("planning")
+    planning = planning if isinstance(planning, dict) else {}
+    planning_status = str(planning.get("status", "pending")).strip().lower()
+    planning_completed = planning_status in COMPLETED_STATUSES
     mode = _normalize_project_mode(state.get("project-mode", "unknown"))
     brownfield_completed = state.get("brownfield-intake-completed")
     if brownfield_completed is None:
@@ -529,6 +608,7 @@ def _legacy_completion_map(data: dict[str, Any], *, cadence_dir_exists: bool) ->
         "task-brownfield-documentation": bool(brownfield_doc_completed),
         "task-ideation": bool(state.get("ideation-completed", False)),
         "task-research": bool(state.get("research-completed", False)),
+        "task-roadmap-planning": bool(planning_completed),
     }
 
 
@@ -563,6 +643,7 @@ def _sync_legacy_flags_from_plan(data: dict[str, Any], plan: list[dict[str, Any]
     brownfield_doc_item = _find_item_by_id(plan, "task-brownfield-documentation")
     ideation_item = _find_item_by_id(plan, "task-ideation")
     research_item = _find_item_by_id(plan, "task-research")
+    planner_item = _find_item_by_id(plan, "task-roadmap-planning")
     mode = _normalize_project_mode(state.get("project-mode", "unknown"))
 
     if prerequisite_item is not None:
@@ -580,6 +661,18 @@ def _sync_legacy_flags_from_plan(data: dict[str, Any], plan: list[dict[str, Any]
     if research_item is not None:
         state["research-completed"] = _is_complete_status(_coerce_status(research_item.get("status")))
 
+    planning = data.get("planning")
+    planning = dict(planning) if isinstance(planning, dict) else {}
+    if planner_item is not None:
+        planner_status = _coerce_status(planner_item.get("status", "pending"))
+        if planner_status in PLANNING_STATUSES:
+            planning["status"] = planner_status
+        else:
+            planning["status"] = "pending"
+        if planning["status"] == "skipped":
+            planning["decomposition_pending"] = False
+    data["planning"] = planning
+
 
 def _normalize_project_mode(value: Any) -> str:
     mode = str(value).strip().lower()
@@ -591,7 +684,8 @@ def _normalize_project_mode(value: Any) -> str:
 def _apply_project_mode_status_overrides(plan: list[dict[str, Any]], *, project_mode: str) -> None:
     ideation_item = _find_item_by_id(plan, "task-ideation")
     brownfield_doc_item = _find_item_by_id(plan, "task-brownfield-documentation")
-    if ideation_item is None and brownfield_doc_item is None:
+    planner_item = _find_item_by_id(plan, "task-roadmap-planning")
+    if ideation_item is None and brownfield_doc_item is None and planner_item is None:
         return
 
     mode = _normalize_project_mode(project_mode)
@@ -600,6 +694,10 @@ def _apply_project_mode_status_overrides(plan: list[dict[str, Any]], *, project_
             current = _coerce_status(brownfield_doc_item.get("status", "pending"))
             if current == "pending":
                 brownfield_doc_item["status"] = "skipped"
+        if planner_item is not None:
+            current = _coerce_status(planner_item.get("status", "pending"))
+            if current == "skipped":
+                planner_item["status"] = "pending"
     elif mode == "brownfield":
         if ideation_item is not None:
             current = _coerce_status(ideation_item.get("status", "pending"))
@@ -609,6 +707,43 @@ def _apply_project_mode_status_overrides(plan: list[dict[str, Any]], *, project_
             current = _coerce_status(brownfield_doc_item.get("status", "pending"))
             if current == "skipped":
                 brownfield_doc_item["status"] = "pending"
+        if planner_item is not None:
+            current = _coerce_status(planner_item.get("status", "pending"))
+            if current == "pending":
+                planner_item["status"] = "skipped"
+    else:
+        if planner_item is not None:
+            current = _coerce_status(planner_item.get("status", "pending"))
+            if current == "pending":
+                planner_item["status"] = "skipped"
+
+
+def _ensure_planning_defaults(planning: Any) -> dict[str, Any]:
+    payload = dict(planning) if isinstance(planning, dict) else {}
+
+    status = str(payload.get("status", "pending")).strip().lower()
+    if status not in PLANNING_STATUSES:
+        status = "pending"
+
+    assumptions = payload.get("assumptions")
+    if not isinstance(assumptions, list):
+        assumptions = []
+
+    milestones = payload.get("milestones")
+    if not isinstance(milestones, list):
+        milestones = []
+
+    return {
+        "version": 1,
+        "status": status,
+        "detail_level": str(payload.get("detail_level", "")).strip(),
+        "decomposition_pending": bool(payload.get("decomposition_pending", True)),
+        "created_at": str(payload.get("created_at", "")).strip(),
+        "updated_at": str(payload.get("updated_at", "")).strip(),
+        "summary": str(payload.get("summary", "")).strip(),
+        "assumptions": assumptions,
+        "milestones": milestones,
+    }
 
 
 def _build_node_ref(node: dict[str, Any]) -> dict[str, Any]:
@@ -751,6 +886,7 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
     if "ideation" not in data or not isinstance(data.get("ideation"), dict):
         data["ideation"] = {}
     data["ideation"] = ensure_ideation_research_defaults(data.get("ideation"))
+    data["planning"] = _ensure_planning_defaults(data.get("planning"))
 
     workflow_seed = data.get("workflow")
     workflow_seed = dict(workflow_seed) if isinstance(workflow_seed, dict) else {}

@@ -29,9 +29,11 @@ class WorkflowStateStatusTests(unittest.TestCase):
         order = [child.get("id") for child in children if isinstance(child, dict)]
         self.assertIn("task-brownfield-intake", order)
         self.assertIn("task-brownfield-documentation", order)
+        self.assertIn("task-roadmap-planning", order)
         self.assertLess(order.index("task-prerequisite-gate"), order.index("task-brownfield-intake"))
         self.assertLess(order.index("task-brownfield-intake"), order.index("task-brownfield-documentation"))
         self.assertLess(order.index("task-brownfield-documentation"), order.index("task-ideation"))
+        self.assertLess(order.index("task-research"), order.index("task-roadmap-planning"))
 
     def test_brownfield_mode_routes_to_documenter_not_ideator(self) -> None:
         data = default_data()
@@ -100,6 +102,55 @@ class WorkflowStateStatusTests(unittest.TestCase):
         intake = find_item(updated["workflow"]["plan"], "task-brownfield-intake")
         self.assertIsNotNone(intake)
         self.assertEqual(intake["status"], "complete")
+
+    def test_greenfield_routes_to_planner_after_research(self) -> None:
+        data = default_data()
+        state = data.setdefault("state", {})
+        state["project-mode"] = "greenfield"
+
+        for task_id in (
+            "task-scaffold",
+            "task-prerequisite-gate",
+            "task-brownfield-intake",
+            "task-ideation",
+            "task-research",
+        ):
+            data, found = set_workflow_item_status(
+                data,
+                item_id=task_id,
+                status="complete",
+                cadence_dir_exists=True,
+            )
+            self.assertTrue(found)
+
+        route = data["workflow"]["next_route"]
+        self.assertEqual(route.get("skill_name"), "planner")
+
+    def test_brownfield_skips_planner(self) -> None:
+        data = default_data()
+        state = data.setdefault("state", {})
+        state["project-mode"] = "brownfield"
+
+        for task_id in (
+            "task-scaffold",
+            "task-prerequisite-gate",
+            "task-brownfield-intake",
+            "task-brownfield-documentation",
+            "task-research",
+        ):
+            data, found = set_workflow_item_status(
+                data,
+                item_id=task_id,
+                status="complete",
+                cadence_dir_exists=True,
+            )
+            self.assertTrue(found)
+
+        updated = reconcile_workflow_state(data, cadence_dir_exists=True)
+        planner_task = find_item(updated["workflow"]["plan"], "task-roadmap-planning")
+        self.assertIsNotNone(planner_task)
+        self.assertEqual(planner_task["status"], "skipped")
+        self.assertEqual(updated["workflow"]["next_item"]["id"], "complete")
 
 
 if __name__ == "__main__":

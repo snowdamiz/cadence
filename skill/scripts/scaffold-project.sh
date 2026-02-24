@@ -29,7 +29,7 @@ else
         "brownfield-documentation-completed": false
     },
     "workflow": {
-        "schema_version": 5,
+        "schema_version": 6,
         "plan": [
             {
                 "id": "milestone-foundation",
@@ -105,6 +105,16 @@ else
                                             "skill_path": "skills/researcher/SKILL.md",
                                             "reason": "Ideation research agenda has not been completed yet."
                                         }
+                                    },
+                                    {
+                                        "id": "task-roadmap-planning",
+                                        "kind": "task",
+                                        "title": "Plan project roadmap",
+                                        "route": {
+                                            "skill_name": "planner",
+                                            "skill_path": "skills/planner/SKILL.md",
+                                            "reason": "Project roadmap planning has not been completed yet."
+                                        }
                                     }
                                 ]
                             }
@@ -154,6 +164,17 @@ else
             "handoff_required": false,
             "handoff_message": "Start a new chat and say \"continue research\"."
         }
+    },
+    "planning": {
+        "version": 1,
+        "status": "pending",
+        "detail_level": "",
+        "decomposition_pending": true,
+        "created_at": "",
+        "updated_at": "",
+        "summary": "",
+        "assumptions": [],
+        "milestones": []
     }
 }
 JSON

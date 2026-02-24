@@ -62,6 +62,7 @@ Per Cadence turn, high-level policy:
 10. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
 11. For brownfield repositories: after intake, route to `brownfield-documenter` (not `ideator`) and force a new-chat handoff before documentation.
 12. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "plan my project".`).
+13. For greenfield flows, after researcher completion route to planner for roadmap planning (milestones/phases in initial planner scope).
 
 Design emphasis:
 - deterministic routing
@@ -80,6 +81,7 @@ Default model includes:
 - `state.project-mode` (`unknown|greenfield|brownfield`)
 - `state.brownfield-intake-completed` (bool)
 - `state.brownfield-documentation-completed` (bool)
+- `planning` (greenfield roadmap object with milestone/phase detail in planner v1)
 - `workflow.plan` (nested milestone -> phase -> wave -> task)
 - `project-details.mode`, `project-details.brownfield_baseline`, and `ideation` objects
 - `ideation.research_agenda` with normalized research `blocks`, `entity_registry`, and `topic_index` for later-phase deep research routing/querying
@@ -92,10 +94,12 @@ Current default actionable tasks:
 - `task-brownfield-documentation` -> `brownfield-documenter`
 - `task-ideation` -> `ideator`
 - `task-research` -> `researcher`
+- `task-roadmap-planning` -> `planner`
 
 Mode-based task override:
 - `greenfield` marks `task-brownfield-documentation` as `skipped`
 - `brownfield` marks `task-ideation` as `skipped`
+- non-greenfield modes mark `task-roadmap-planning` as `skipped`
 
 ### 4) Derive + Route Workflow
 `workflow_state.py` is the core state engine:
@@ -117,6 +121,7 @@ Mode-based task override:
 - `brownfield-documenter`: investigate existing repo evidence deeply and persist canonical ideation + research agenda structures for brownfield projects.
 - `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, and treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
 - `researcher`: execute ideation research agenda in dynamic, bounded one-pass runs; persist findings to `cadence.json`; enforce handoff between passes to reset chat context.
+- `planner`: for greenfield projects, read Cadence ideation/research context and persist high-level roadmap planning (milestones/phases only) into `cadence.json`.
 - `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
 - `project-progress`: read normalized workflow state, report progress, route next action, checkpoint.
 
@@ -131,6 +136,7 @@ Workflow/state:
 - `run-skill-entry-gate.py`: shared subskill preflight wrapper for root/scripts-dir/repo-status plus optional route/workflow checks.
 - `resolve-project-root.py` + `project_root.py`: resolve active project root (cwd, explicit, or cached hint) so subskills can target the correct repo across chats.
 - `query-json-fuzzy.py`: generic fuzzy JSON query helper used by supporting flows.
+- `run-planner.py`: planner discovery (`discover`) and roadmap persistence (`complete`) for greenfield milestone/phase planning.
 
 Scaffold/prereq:
 - `scaffold-project.sh`: idempotent `.cadence` bootstrap (uses template fallback JSON).
@@ -159,7 +165,7 @@ Git checkpoints:
 `skill/config/commit-conventions.json` defines:
 - commit type: `cadence`
 - subject max: 72 chars
-- scopes/checkpoints (scaffold, prerequisite-gate, brownfield-intake, brownfield-documenter, ideator, researcher, ideation-updater, project-progress)
+- scopes/checkpoints (scaffold, prerequisite-gate, brownfield-intake, brownfield-documenter, ideator, researcher, planner, ideation-updater, project-progress)
 - atomic batching constraints:
   - max files per commit (default 4)
   - semantic file groups (`cadence-state`, `skill-instructions`, `docs`, `scripts`, `tests`, `config`, `source`)
@@ -198,7 +204,7 @@ What is strong:
 - installer supports many AI tool ecosystems with one package
 
 What is intentionally narrow right now:
-- default workflow tracks Foundation setup plus project mode intake, brownfield documentation, and ideation research execution (scaffold/prereq/intake/brownfield-doc-or-ideation/research)
+- default workflow tracks Foundation setup, ideation research execution, and initial greenfield roadmap planning (scaffold/prereq/intake/brownfield-doc-or-ideation/research/planner)
 - prerequisite gate currently checks only `python3` presence
 - in-repo automated tests cover shared entry gate preflight behavior, repo status detection, workflow state transitions, route assertions, checkpoint batching, brownfield intake/documentation flows, and research-pass payload validation
 - this repo ships framework/instructions; project-specific execution happens in downstream repos that install the skill
