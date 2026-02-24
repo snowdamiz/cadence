@@ -10,7 +10,7 @@ interface:
     analysis, then persist with scripts/run-brownfield-documentation.py --project-root "$PROJECT_ROOT" complete --stdin.
     Require a research_agenda with at least one topic, verify with scripts/get-ideation.py, and mention
     scripts/query-ideation-research.py for granular queries.
-    End success with: Start a new chat with a new agent and say "plan my project".
+    End success with: Start a new chat with a new agent and say "research my project".
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope brownfield-documenter
     --checkpoint documentation-captured --paths . (allow status=no_changes; surface failures verbatim).
     Keep replies concise and hide internal traces unless asked.

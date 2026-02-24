@@ -81,7 +81,7 @@ description: Guide users from a rough concept to a fully defined project idea th
 17. Verify persistence by running `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/get-ideation.py"`.
 18. Mention that granular research queries are available via `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py"`.
 19. Mention that research execution runs in a separate `researcher` phase.
-20. End successful ideation completion replies with this exact line: `Start a new chat with a new agent and say "plan my project".`
+20. End successful ideation completion replies with this exact line: `Start a new chat with a new agent and say "research my project".`
 21. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope ideator --checkpoint ideation-completed --paths .`.
 22. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 23. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.

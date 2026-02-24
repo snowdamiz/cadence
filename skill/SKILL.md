@@ -94,13 +94,13 @@ description: Structured project operating system for end-to-end greenfield or br
 2. In subsequent conversations, if the workflow route is `ideator`, do not rerun prerequisite gate or project mode intake.
 3. If the user asks to define the project or provides a brief while route is `ideator`, invoke `skills/ideator/SKILL.md`.
 4. If route is `ideator` and the user has not provided ideation input yet, ask one kickoff ideation question in-thread and continue.
-5. When route advances from `ideator` to `researcher`, force a handoff and end with this exact line: `Start a new chat with a new agent and say "plan my project".`
+5. When route advances from `ideator` to `researcher`, force a handoff and end with this exact line: `Start a new chat with a new agent and say "research my project".`
 
 ## Brownfield Flow
 1. When scaffold, prerequisite, and project mode intake complete in this same conversation for a brownfield project and route advances to `brownfield-documenter`, force a subskill handoff and end with this exact line: `Start a new chat and say "document my existing project".`
 2. In subsequent conversations, if workflow route is `brownfield-documenter`, invoke `skills/brownfield-documenter/SKILL.md`.
 3. Do not route brownfield projects to `skills/ideator/SKILL.md` unless the user explicitly asks to run net-new ideation discovery.
-4. When route advances from `brownfield-documenter` to `researcher`, force a handoff and end with this exact line: `Start a new chat with a new agent and say "plan my project".`
+4. When route advances from `brownfield-documenter` to `researcher`, force a handoff and end with this exact line: `Start a new chat with a new agent and say "research my project".`
 
 ## Research Flow
 1. If the workflow route is `researcher`, invoke `skills/researcher/SKILL.md`.

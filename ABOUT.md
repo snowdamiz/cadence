@@ -61,7 +61,7 @@ Per Cadence turn, high-level policy:
 9. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
 10. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
 11. For brownfield repositories: after intake, route to `brownfield-documenter` (not `ideator`) and force a new-chat handoff before documentation.
-12. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "plan my project".`).
+12. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "research my project".`).
 13. For greenfield flows, after researcher completion route to planner for roadmap planning (milestones/phases in initial planner scope).
 
 Design emphasis:

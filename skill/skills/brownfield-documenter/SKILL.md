@@ -55,7 +55,7 @@ description: Perform deep evidence-based analysis of an existing codebase and pe
 12. Mention that granular research queries are available via:
    - `python3 "$CADENCE_SCRIPTS_DIR/query-ideation-research.py" --project-root "$PROJECT_ROOT"`
 13. End successful completion replies with this exact line:
-   - `Start a new chat with a new agent and say "plan my project".`
+   - `Start a new chat with a new agent and say "research my project".`
 14. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope brownfield-documenter --checkpoint documentation-captured --paths .`.
 15. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
 16. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.

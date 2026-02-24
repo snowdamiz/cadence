@@ -10,7 +10,7 @@ interface:
     Ask one question at a time, build an execution-ready ideation object and complete research_agenda,
     then from PROJECT_ROOT rerun route assertion, run scripts/prepare-ideation-research.py,
     and persist with scripts/inject-ideation.py.
-    End successful completion with: Start a new chat with a new agent and say "plan my project".
+    End successful completion with: Start a new chat with a new agent and say "research my project".
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope ideator
     --checkpoint ideation-completed --paths . (allow status=no_changes; treat failures as blocking).
     Keep replies focused on ideation outcomes and hide internal traces unless asked.
