@@ -3,7 +3,6 @@
 
 import argparse
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -14,6 +13,13 @@ from project_root import resolve_project_root, write_project_root_hint
 SCRIPT_DIR = Path(__file__).resolve().parent
 RESOLVE_SCRIPT = SCRIPT_DIR / "resolve-project-scripts-dir.py"
 ROUTE_GUARD_SCRIPT = SCRIPT_DIR / "assert-workflow-route.py"
+REQUIRED_RUNTIME_ASSETS = (
+    "handle-prerequisite-state.py",
+    "read-workflow-state.py",
+    "set-workflow-item-status.py",
+    "finalize-skill-checkpoint.py",
+    "workflow_state.py",
+)
 
 
 def run_command(command):
@@ -74,6 +80,21 @@ def resolve_scripts_dir(project_root: Path):
         raise SystemExit(1)
 
     return scripts_dir
+
+
+def assert_runtime_assets(scripts_dir: str):
+    scripts_path = Path(scripts_dir)
+    missing: list[str] = []
+    for asset in REQUIRED_RUNTIME_ASSETS:
+        if not (scripts_path / asset).is_file():
+            missing.append(asset)
+
+    if missing:
+        print(
+            "MISSING_CADENCE_RUNTIME_ASSET:" + ",".join(sorted(missing)),
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 def read_prerequisite_state(scripts_dir, project_root: Path):
@@ -139,18 +160,33 @@ def main():
         scripts_dir = str(scripts_path)
     else:
         scripts_dir = resolve_scripts_dir(project_root)
+    assert_runtime_assets(scripts_dir)
     state = read_prerequisite_state(scripts_dir, project_root)
 
     if state == "true":
-        print(json.dumps({"status": "ok", "prerequisites_pass": True, "source": "cache"}))
+        print(
+            json.dumps(
+                {
+                    "status": "ok",
+                    "prerequisites_pass": True,
+                    "source": "cache",
+                    "runtime_assets": "ok",
+                }
+            )
+        )
         return
 
-    if shutil.which("python3") is None:
-        print("MISSING_PYTHON3", file=sys.stderr)
-        raise SystemExit(1)
-
     write_prerequisite_state(scripts_dir, "1", project_root)
-    print(json.dumps({"status": "ok", "prerequisites_pass": True, "source": "fresh-check"}))
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "prerequisites_pass": True,
+                "source": "fresh-check",
+                "runtime_assets": "ok",
+            }
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ The installer shows a multi-select prompt (comma-separated choices) so you can i
 If a selected tool already has Cadence installed, the installer prints an update notice and warns that files will be overwritten.
 In TTY terminals, selection is a real interactive TUI: use arrow keys (or `j`/`k`) to move, `space` to toggle, `a` to toggle all, and `enter` to confirm.
 The TUI includes color highlighting and a large ASCII `CADANCE` header.
+Before copying skill files, the installer checks for `python3`; if missing, it warns and offers to install Python 3 using a detected system package manager.
 
 ## Non-interactive examples
 

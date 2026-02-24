@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { stdin as input, stdout as output } from "node:process";
 
@@ -106,7 +107,11 @@ function printHelp(binName, installerVersion) {
       "  --all                  Install to all supported tools.",
       "  --yes                  Skip confirmation prompt.",
       "  --home <path>          Override home directory for destination paths.",
-      "  --help                 Show this message."
+      "  --help                 Show this message.",
+      "",
+      "Prerequisite:",
+      "  python3 is required for Cadence workflow scripts. Installer preflight checks",
+      "  python3 and can offer installation guidance in interactive runs."
     ].join("\n") + "\n"
   );
 }
@@ -152,6 +157,150 @@ function parseArgs(argv) {
   }
 
   return parsed;
+}
+
+function isCommandAvailable(command) {
+  if (process.platform === "win32") {
+    const result = spawnSync("where", [command], { stdio: "ignore" });
+    return result.status === 0;
+  }
+
+  const result = spawnSync("sh", ["-lc", `command -v ${command}`], { stdio: "ignore" });
+  return result.status === 0;
+}
+
+function withOptionalSudo(command, args) {
+  const display = `${command} ${args.join(" ")}`.trim();
+  if (process.platform === "win32") {
+    return { command, args, display };
+  }
+
+  const isRoot = typeof process.getuid === "function" && process.getuid() === 0;
+  if (isRoot || !isCommandAvailable("sudo")) {
+    return { command, args, display };
+  }
+
+  return {
+    command: "sudo",
+    args: [command, ...args],
+    display: `sudo ${display}`
+  };
+}
+
+function detectPythonInstallCommand() {
+  if (process.platform === "darwin") {
+    if (isCommandAvailable("brew")) {
+      return {
+        command: "brew",
+        args: ["install", "python"],
+        display: "brew install python"
+      };
+    }
+    return null;
+  }
+
+  if (process.platform === "linux") {
+    if (isCommandAvailable("apt-get")) {
+      return withOptionalSudo("apt-get", ["install", "-y", "python3"]);
+    }
+    if (isCommandAvailable("dnf")) {
+      return withOptionalSudo("dnf", ["install", "-y", "python3"]);
+    }
+    if (isCommandAvailable("yum")) {
+      return withOptionalSudo("yum", ["install", "-y", "python3"]);
+    }
+    if (isCommandAvailable("pacman")) {
+      return withOptionalSudo("pacman", ["-Sy", "--noconfirm", "python"]);
+    }
+    return null;
+  }
+
+  if (process.platform === "win32") {
+    if (isCommandAvailable("winget")) {
+      return {
+        command: "winget",
+        args: ["install", "-e", "--id", "Python.Python.3.12"],
+        display: "winget install -e --id Python.Python.3.12"
+      };
+    }
+    if (isCommandAvailable("choco")) {
+      return {
+        command: "choco",
+        args: ["install", "-y", "python"],
+        display: "choco install -y python"
+      };
+    }
+    return null;
+  }
+
+  return null;
+}
+
+async function confirmPythonInstall(commandDisplay) {
+  const rl = readline.createInterface({ input, output });
+  try {
+    const answer = await rl.question(
+      style(
+        `Python 3 is required and not detected. Install now using "${commandDisplay}"? [y/N]: `,
+        ANSI.bold,
+        ANSI.white
+      )
+    );
+    const normalized = answer.trim().toLowerCase();
+    return normalized === "y" || normalized === "yes";
+  } finally {
+    rl.close();
+  }
+}
+
+async function ensurePythonInstalled(parsed) {
+  if (isCommandAvailable("python3")) {
+    return;
+  }
+
+  output.write(
+    style(
+      "\nWarning: python3 is missing. Cadence workflow scripts require Python 3.\n",
+      ANSI.bold,
+      ANSI.brightYellow
+    )
+  );
+
+  const installCommand = detectPythonInstallCommand();
+  if (!installCommand) {
+    throw new Error(
+      "python3 is missing and no supported automatic installer was detected. Install Python 3 manually, then rerun cadence-skill-installer."
+    );
+  }
+
+  const canPrompt = input.isTTY && output.isTTY && !parsed.yes;
+  if (!canPrompt) {
+    throw new Error(
+      `python3 is missing. Re-run installer interactively to allow automatic installation with: ${installCommand.display}`
+    );
+  }
+
+  const installApproved = await confirmPythonInstall(installCommand.display);
+  if (!installApproved) {
+    throw new Error("python3 is required. Install Python 3 and rerun cadence-skill-installer.");
+  }
+
+  output.write(style(`\nInstalling Python 3 via: ${installCommand.display}\n`, ANSI.bold, ANSI.brightCyan));
+  const installResult = spawnSync(installCommand.command, installCommand.args, {
+    stdio: "inherit"
+  });
+
+  if (installResult.error) {
+    throw new Error(`Failed to run Python installer command: ${installResult.error.message}`);
+  }
+  if (installResult.status !== 0) {
+    throw new Error("Python installation command failed.");
+  }
+  if (!isCommandAvailable("python3")) {
+    throw new Error("Python installation completed, but python3 is still not detected on PATH.");
+  }
+
+  output.write(style("Python 3 detected. Continuing installation.\n", ANSI.bold, ANSI.brightGreen));
 }
 
 async function readInstallerVersion() {
@@ -582,6 +731,8 @@ async function main() {
     printHelp(binName, installerVersion);
     return;
   }
+
+  await ensurePythonInstalled(parsed);
 
   const homeDir = parsed.home || os.homedir();
   const sourceDir = resolveSourceDir();

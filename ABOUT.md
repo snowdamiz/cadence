@@ -43,6 +43,7 @@ Install-time payload (what gets copied to user tool skill paths):
 
 Installer behavior:
 - supports interactive TUI multi-select + text fallback + non-interactive flags (`--all`, `--tools`, `--yes`, `--home`)
+- checks for `python3` before install; if missing in interactive mode, warns and offers guided installation via detected package manager command
 - detects existing installs and warns before overwrite
 - recursively copies skill content while skipping `.DS_Store` and `__pycache__`
 
@@ -116,7 +117,7 @@ Mode-based task override:
 
 ## Subskills (Functional Intent)
 - `scaffold`: create `.cadence`, initialize `cadence.json`, persist scripts-dir, configure `.gitignore` track/ignore policy, initialize git/repo mode, checkpoint.
-- `prerequisite-gate`: verify Python availability (`python3`), persist prerequisite pass, checkpoint.
+- `prerequisite-gate`: verify required Cadence runtime assets, persist prerequisite pass, checkpoint.
 - `brownfield-intake`: classify project mode and persist deterministic baseline inventory for existing repositories before ideation routing.
 - `brownfield-documenter`: investigate existing repo evidence deeply and persist canonical ideation + research agenda structures for brownfield projects.
 - `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, and treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
@@ -142,7 +143,7 @@ Workflow/state:
 Scaffold/prereq:
 - `scaffold-project.sh`: idempotent `.cadence` bootstrap (uses template fallback JSON).
 - `run-scaffold-gate.py`: route assert + scaffold + scripts-dir init + state validation.
-- `run-prerequisite-gate.py`: route assert + scripts-dir resolve + python check + state write.
+- `run-prerequisite-gate.py`: route assert + scripts-dir resolve + Cadence runtime-asset checks + state write.
 - `run-brownfield-intake.py`: route assert + project mode classification + brownfield inventory baseline persistence.
 - `run-brownfield-documentation.py`: route assert + helper discovery (`discover`) + explicit persistence (`complete`) of AI-authored ideation/research payload.
 - `handle-prerequisite-state.py`: read/write `prerequisites-pass`.
@@ -211,7 +212,7 @@ What is strong:
 
 What is intentionally narrow right now:
 - default workflow tracks Foundation setup, ideation research execution, and initial greenfield roadmap planning (scaffold/prereq/intake/brownfield-doc-or-ideation/research/planner)
-- prerequisite gate currently checks only `python3` presence
+- prerequisite gate currently validates required Cadence runtime assets only
 - in-repo automated tests cover shared entry gate preflight behavior, repo status detection, workflow state transitions, route assertions, checkpoint batching, brownfield intake/documentation flows, and research-pass payload validation
 - this repo ships framework/instructions; project-specific execution happens in downstream repos that install the skill
 

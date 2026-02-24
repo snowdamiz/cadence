@@ -1,6 +1,6 @@
 interface:
   display_name: "Prerequisite Gate"
-  short_description: "Run and persist Cadence prerequisite checks for Python availability"
+  short_description: "Run and persist Cadence runtime prerequisite checks"
   default_prompt: >-
     Follow skills/prerequisite-gate/SKILL.md for exact gate behavior.
     Run scripts/run-skill-entry-gate.py --require-cadence, then use its JSON output for PROJECT_ROOT
