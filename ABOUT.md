@@ -121,7 +121,7 @@ Mode-based task override:
 - `prerequisite-gate`: verify required Cadence runtime assets, persist prerequisite pass, checkpoint.
 - `brownfield-intake`: classify project mode and persist deterministic baseline inventory for existing repositories before ideation routing.
 - `brownfield-documenter`: investigate existing repo evidence deeply and persist canonical ideation + research agenda structures for brownfield projects.
-- `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, and treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
+- `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, return the full identified research-topic list for user add/remove edits before persistence, and treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
 - `researcher`: execute ideation research agenda in dynamic, bounded one-pass runs; persist findings to `cadence.json`; enforce strict user-facing pass-result format and handoff between passes to reset chat context.
 - `planner`: for greenfield projects, read Cadence ideation/research context and persist high-level roadmap planning (milestones/phases only) into `cadence.json`.
 - `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
