@@ -62,6 +62,17 @@ class FinalizeCheckpointBatchTests(unittest.TestCase):
         )
         self.assertEqual(filtered, ["docs/readme.md", "scripts/run.sh"])
 
+    def test_parse_status_paths_skips_ignored_entries(self) -> None:
+        status_output = "\n".join(
+            [
+                "?? .gitignore",
+                "!! .cadence/",
+                " M README.md",
+            ]
+        )
+        parsed = finalize_module.parse_status_paths(status_output)
+        self.assertEqual(parsed, [".gitignore", "README.md"])
+
     def test_normalize_requested_pathspecs_scopes_to_project_root(self) -> None:
         repo_root = Path("/tmp/repo")
         project_root = repo_root / "apps" / "service-a"

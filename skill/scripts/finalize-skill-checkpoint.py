@@ -88,6 +88,8 @@ def parse_status_paths(status_output: str) -> list[str]:
         line = raw_line.rstrip("\n")
         if len(line) < 4:
             continue
+        if line.startswith("!! "):
+            continue
 
         path_part = line[3:]
         if " -> " in path_part:

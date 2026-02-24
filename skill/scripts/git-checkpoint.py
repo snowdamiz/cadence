@@ -154,12 +154,28 @@ def ensure_no_pre_staged_changes(repo_root: Path) -> None:
         raise CheckpointError("STAGED_CHANGES_PRESENT")
 
 
-def path_exists_or_tracked(repo_root: Path, pathspec: str) -> bool:
-    if (repo_root / pathspec).exists():
-        return True
-
+def path_is_tracked(repo_root: Path, pathspec: str) -> bool:
     result = run_git(["ls-files", "--error-unmatch", "--", pathspec], repo_root)
     return result.returncode == 0
+
+
+def path_is_ignored(repo_root: Path, pathspec: str) -> bool:
+    result = run_git(["check-ignore", "--quiet", "--", pathspec], repo_root)
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
+        return False
+    raise CheckpointError(format_git_error("GIT_CHECK_IGNORE_FAILED", result))
+
+
+def path_exists_or_tracked(repo_root: Path, pathspec: str) -> bool:
+    if path_is_tracked(repo_root, pathspec):
+        return True
+
+    if not (repo_root / pathspec).exists():
+        return False
+
+    return not path_is_ignored(repo_root, pathspec)
 
 
 def stage_paths(repo_root: Path, paths: list[str]) -> None:
@@ -167,7 +183,7 @@ def stage_paths(repo_root: Path, paths: list[str]) -> None:
     if not valid_paths:
         return
 
-    result = run_git(["add", "--", *valid_paths], repo_root)
+    result = run_git(["add", "-f", "--", *valid_paths], repo_root)
     if result.returncode != 0:
         raise CheckpointError(format_git_error("GIT_ADD_FAILED", result))
 
