@@ -1,5 +1,5 @@
 interface:
-  display_name: "Brownfield Intake"
+  display_name: "Project Mode Intake"
   short_description: "Classify project mode and capture existing-codebase baseline"
   default_prompt: >-
     Follow skills/brownfield-intake/SKILL.md for exact gate behavior.
@@ -8,6 +8,7 @@ interface:
     Never edit .cadence/cadence.json manually.
     Enforce the strict user-facing response templates from skills/brownfield-intake/SKILL.md.
     Run scripts/run-brownfield-intake.py --project-root "$PROJECT_ROOT" --project-mode auto.
+    In user-facing messages before mode resolution, refer to this step as project mode intake (not brownfield intake).
     Do not ask the user to choose mode up front; clean repositories should resolve to greenfield automatically.
     If the user explicitly asks to force a mode, rerun with --project-mode <greenfield|brownfield>.
     If brownfield is selected, summarize key baseline signals and end with:

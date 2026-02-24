@@ -8,7 +8,8 @@ interface:
     otherwise scaffold first. If .cadence exists but cadence.json is missing, run scaffold recovery.
     After scaffold handling, run scripts/read-workflow-state.py --project-root "$PROJECT_ROOT" and only invoke
     the skill in route.skill_name. During first-run bootstrap, auto-chain scaffold -> prerequisite-gate ->
-    brownfield-intake in one continuous run and do not stop between these gates unless a user decision is required.
+    project mode intake (brownfield-intake) in one continuous run and do not stop between these gates unless a user
+    decision is required. In user-facing replies before mode resolution, refer to this step as project mode intake.
     For manual subskill requests, assert route first with
     scripts/assert-workflow-route.py --skill-name <subskill> --project-root "$PROJECT_ROOT".
     Never edit .cadence/cadence.json manually. Keep replies concise, do not expose internal traces unless asked,

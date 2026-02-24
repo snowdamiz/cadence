@@ -3,7 +3,7 @@ name: brownfield-intake
 description: Classify project mode (greenfield vs brownfield) and capture a deterministic baseline inventory for existing codebases before ideation routing.
 ---
 
-# Brownfield Intake
+# Project Mode Intake
 
 1. Run shared skill entry gates once at conversation start:
    - `python3 ../../scripts/run-skill-entry-gate.py --require-cadence`
@@ -16,24 +16,25 @@ description: Classify project mode (greenfield vs brownfield) and capture a dete
 5. If the user explicitly asks to force a specific mode, rerun intake with explicit mode selection:
    - `python3 "$CADENCE_SCRIPTS_DIR/run-brownfield-intake.py" --project-root "$PROJECT_ROOT" --project-mode <greenfield|brownfield>`
 6. `run-brownfield-intake.py` performs workflow route assertion internally; if assertion fails, stop and surface the exact error.
-7. If mode is `brownfield`, summarize captured baseline highlights for the user:
+7. In user-facing updates before mode is determined, refer to this step as `project mode intake`; do not call the repository brownfield before the result is known.
+8. If mode is `brownfield`, summarize captured baseline highlights for the user:
    - repository scale (file/directory counts)
    - detected manifests/tooling
    - CI workflows
    - monorepo signal
-8. If mode is `brownfield`, tell the user this gate will route to `skills/brownfield-documenter/SKILL.md` next (not ideator), and end with this exact handoff line: `Start a new chat and say "document my existing project".`
-9. If mode is `greenfield`, state that brownfield baseline capture was skipped and workflow advanced.
-10. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope brownfield-intake --checkpoint baseline-captured --paths .`.
-11. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
-12. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
-13. In normal user-facing updates, report mode decision and baseline outcome without raw command traces or internal routing details unless explicitly requested.
+9. If mode is `brownfield`, tell the user this gate will route to `skills/brownfield-documenter/SKILL.md` next (not ideator), and end with this exact handoff line: `Start a new chat and say "document my existing project".`
+10. If mode is `greenfield`, state that existing-code baseline capture was skipped and workflow advanced.
+11. At end of this successful skill conversation, run `cd "$PROJECT_ROOT" && python3 "$CADENCE_SCRIPTS_DIR/finalize-skill-checkpoint.py" --scope brownfield-intake --checkpoint baseline-captured --paths .`.
+12. If `finalize-skill-checkpoint.py` returns `status=no_changes`, continue without failure.
+13. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
+14. In normal user-facing updates, report mode decision and baseline outcome without raw command traces or internal routing details unless explicitly requested.
 
 ## Strict Response Format
 
 - If resulting mode is `brownfield`, respond exactly in this shape:
 
   ```text
-  Brownfield intake result:
+  Project mode intake result:
 
   - Mode: brownfield (source: <mode_source>; detected: <detected_mode>)
   - Repository scale: files=<file_count>, directories=<directory_count>
@@ -48,10 +49,10 @@ description: Classify project mode (greenfield vs brownfield) and capture a dete
 - If resulting mode is `greenfield`, respond exactly in this shape:
 
   ```text
-  Brownfield intake result:
+  Project mode intake result:
   
   - Mode: greenfield (source: <mode_source>; detected: <detected_mode>)
-  - Baseline capture: skipped (clean repository)
+  - Existing-code baseline: skipped (clean repository)
   - Checkpoint: brownfield-intake/baseline-captured (<ok|no_changes>)
   - Next step: Continue with ideation.
 

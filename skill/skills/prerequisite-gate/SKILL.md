@@ -22,7 +22,7 @@ description: Run and persist Cadence runtime prerequisite checks. Use when Caden
 11. In normal user-facing updates, share the prerequisite outcome without raw command traces or internal routing details unless explicitly requested.
 12. Bootstrap continuation rule:
    - When prerequisite-gate is routed from root Cadence during first-run bootstrap and no error is present, do not stop the conversation after prerequisite completion.
-   - Immediately return to root routing so `brownfield-intake` can run automatically in the same turn.
+   - Immediately return to root routing so project mode intake (`brownfield-intake`) can run automatically in the same turn.
 
 ## Strict Response Format
 
@@ -37,7 +37,7 @@ description: Run and persist Cadence runtime prerequisite checks. Use when Caden
   Action required: repair or reinstall Cadence skill files, then rerun the prerequisite gate.
   ```
 
-- On successful prerequisite completion, respond exactly only when prerequisite-gate is the terminal action for the turn (for example direct subskill runs or explicit prerequisite status requests). During root bootstrap auto-run, continue to brownfield-intake without emitting this terminal template.
+- On successful prerequisite completion, respond exactly only when prerequisite-gate is the terminal action for the turn (for example direct subskill runs or explicit prerequisite status requests). During root bootstrap auto-run, continue to project mode intake without emitting this terminal template.
 
   ```text
   Prerequisite gate complete:

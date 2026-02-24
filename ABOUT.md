@@ -55,7 +55,7 @@ Per Cadence turn, high-level policy:
 2. If `.cadence` already exists, run repo status (`check-project-repo-status.py --project-root "$PROJECT_ROOT"`) and persist `state.repo-enabled`; if `.cadence` is missing, skip this check until scaffold initializes state.
 3. If `.cadence` or `.cadence/cadence.json` is missing: run scaffold gate.
 4. Read workflow route (`read-workflow-state.py --project-root "$PROJECT_ROOT"`) and treat `route.skill_name` as authoritative.
-5. On first-run bootstrap, auto-chain setup gates in one run (`scaffold` -> `prerequisite-gate` -> `brownfield-intake`) and pause only for explicit user decisions.
+5. On first-run bootstrap, auto-chain setup gates in one run (`scaffold` -> `prerequisite-gate` -> project mode intake via `brownfield-intake`) and pause only for explicit user decisions.
 6. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
 7. Run project mode intake when route points to `brownfield-intake` to classify greenfield vs brownfield and capture existing-code baseline.
 8. Use project-progress skill for resume/status intents.
