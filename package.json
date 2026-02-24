@@ -1,6 +1,6 @@
 {
   "name": "cadence-skill-installer",
-  "version": "0.2.27",
+  "version": "0.2.28",
   "description": "Install the Cadence skill into supported AI tool skill directories.",
   "repository": "https://github.com/snowdamiz/cadence",
   "private": false,
