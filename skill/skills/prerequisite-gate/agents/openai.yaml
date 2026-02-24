@@ -8,6 +8,8 @@ interface:
     Never edit .cadence/cadence.json manually.
     Enforce the strict user-facing response templates from skills/prerequisite-gate/SKILL.md.
     Run scripts/run-prerequisite-gate.py --project-root "$PROJECT_ROOT" --scripts-dir "$CADENCE_SCRIPTS_DIR".
+    During root Cadence first-run bootstrap, do not stop after prerequisite success; continue routing so
+    brownfield-intake runs automatically in the same turn when there are no prerequisite errors.
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope prerequisite-gate
     --checkpoint prerequisites-passed --paths . (allow status=no_changes; treat failures as blocking).
     Keep replies focused on prerequisite outcomes and hide internal traces unless asked.

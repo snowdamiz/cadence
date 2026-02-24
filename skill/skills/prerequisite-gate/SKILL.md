@@ -20,6 +20,9 @@ description: Run and persist Cadence runtime prerequisite checks. Use when Caden
 9. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 10. Surface script failures verbatim instead of adding custom fallback logic.
 11. In normal user-facing updates, share the prerequisite outcome without raw command traces or internal routing details unless explicitly requested.
+12. Bootstrap continuation rule:
+   - When prerequisite-gate is routed from root Cadence during first-run bootstrap and no error is present, do not stop the conversation after prerequisite completion.
+   - Immediately return to root routing so `brownfield-intake` can run automatically in the same turn.
 
 ## Strict Response Format
 
@@ -34,7 +37,7 @@ description: Run and persist Cadence runtime prerequisite checks. Use when Caden
   Action required: repair or reinstall Cadence skill files, then rerun the prerequisite gate.
   ```
 
-- On successful prerequisite completion, respond exactly:
+- On successful prerequisite completion, respond exactly only when prerequisite-gate is the terminal action for the turn (for example direct subskill runs or explicit prerequisite status requests). During root bootstrap auto-run, continue to brownfield-intake without emitting this terminal template.
 
   ```text
   Prerequisite gate complete:
@@ -43,5 +46,5 @@ description: Run and persist Cadence runtime prerequisite checks. Use when Caden
   - Cadence prerequisite gate: passed
   - Checkpoint: prerequisite-gate/prerequisites-passed (<ok|no_changes>)
   
-  Next step: Run project mode and baseline intake.
+  Next step: Auto-continue to project mode and baseline intake.
   ```

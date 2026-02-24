@@ -37,6 +37,9 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
 13. If `finalize-skill-checkpoint.py` reports an error, stop and surface it verbatim.
 14. Execute scaffold actions serially. Do not run this flow in parallel with other setup gates.
 15. In user-facing replies, summarize only the result. Do not expose internal command lines, skill chains, or execution traces unless explicitly requested.
+16. Bootstrap continuation rule:
+   - When scaffold is routed from root Cadence during first-run bootstrap and no scaffold decision is pending, do not stop the conversation after scaffold completion.
+   - Immediately return to root routing so `prerequisite-gate` can run automatically in the same turn.
 
 ## Strict Response Format
 
@@ -52,7 +55,7 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
   Decision needed: <one required decision>
   ```
 
-- For successful completion, respond exactly in this shape:
+- For successful completion, respond exactly in this shape only when scaffold is the terminal action for the turn (for example direct scaffold runs or explicit scaffold status requests). During root bootstrap auto-run, continue to prerequisite without emitting this terminal template.
 
   ```text
   Scaffold complete:
@@ -62,5 +65,5 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
   - Repo mode: <remote-enabled|local-only>
   - .cadence git policy: <tracked|ignored>
   - Checkpoint: scaffold/<cadence-tracked|cadence-ignored> (<ok|no_changes>)
-  - Next step: Run prerequisite gate.
+  - Next step: Auto-continue to prerequisite gate.
   ```

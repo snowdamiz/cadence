@@ -55,15 +55,16 @@ Per Cadence turn, high-level policy:
 2. If `.cadence` already exists, run repo status (`check-project-repo-status.py --project-root "$PROJECT_ROOT"`) and persist `state.repo-enabled`; if `.cadence` is missing, skip this check until scaffold initializes state.
 3. If `.cadence` or `.cadence/cadence.json` is missing: run scaffold gate.
 4. Read workflow route (`read-workflow-state.py --project-root "$PROJECT_ROOT"`) and treat `route.skill_name` as authoritative.
-5. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
-6. Run project mode intake when route points to `brownfield-intake` to classify greenfield vs brownfield and capture existing-code baseline.
-7. Use project-progress skill for resume/status intents.
-8. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
-9. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
-10. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
-11. For brownfield repositories: after intake, route to `brownfield-documenter` (not `ideator`) and force a new-chat handoff before documentation.
-12. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "research my project".`).
-13. For greenfield flows, after researcher completion route to planner for roadmap planning (milestones/phases in initial planner scope).
+5. On first-run bootstrap, auto-chain setup gates in one run (`scaffold` -> `prerequisite-gate` -> `brownfield-intake`) and pause only for explicit user decisions.
+6. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
+7. Run project mode intake when route points to `brownfield-intake` to classify greenfield vs brownfield and capture existing-code baseline.
+8. Use project-progress skill for resume/status intents.
+9. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
+10. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
+11. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
+12. For brownfield repositories: after intake, route to `brownfield-documenter` (not `ideator`) and force a new-chat handoff before documentation.
+13. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "research my project".`).
+14. For greenfield flows, after researcher completion route to planner for roadmap planning (milestones/phases in initial planner scope).
 
 Design emphasis:
 - deterministic routing

@@ -64,6 +64,15 @@ description: Structured project operating system for end-to-end greenfield or br
    - user explicitly asks to continue/resume/status/reroute
    - a route assertion failed and recovery is required
 
+## Initial Bootstrap Auto-Run (Mandatory)
+1. For first-run bootstrap on a net-new project, automatically execute setup gates in one continuous flow: `scaffold` -> `prerequisite-gate` -> `brownfield-intake`.
+2. After each successful setup gate checkpoint, rerun `read-workflow-state.py` and immediately continue with the next routed setup gate in the same turn.
+3. Do not stop after scaffold or prerequisite success just to ask the user to trigger the next gate manually.
+4. Pause only when a gate requires an explicit user decision (for example remote configuration or `.cadence` git policy in scaffold).
+5. After brownfield-intake completes:
+   - if route advances to `ideator`, end with the exact ideation handoff line
+   - if route advances to `brownfield-documenter`, end with the exact brownfield handoff line
+
 ## Prerequisite Gate (Conditional)
 1. Invoke `skills/prerequisite-gate/SKILL.md` only when `route.skill_name` is `prerequisite-gate`.
 2. If `route.skill_name` is not `prerequisite-gate` (for example `brownfield-intake`, `brownfield-documenter`, `ideator`, `researcher`, or `planner`), skip prerequisite gate and follow the active route instead.
