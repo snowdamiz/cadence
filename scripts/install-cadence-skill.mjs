@@ -11,6 +11,7 @@ const CADENCE_SKILL_NAME = "cadence";
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(SCRIPT_PATH);
 const PACKAGE_JSON_PATH = path.resolve(SCRIPT_DIR, "..", "package.json");
+const INSTALL_VERSION_MARKER = ".cadence-version";
 
 const TOOL_TARGETS = [
   { key: "codex", label: "Codex", relPath: [".codex", "skills", CADENCE_SKILL_NAME] },
@@ -211,14 +212,17 @@ async function detectInstallState(targetDir) {
   const markerPath = path.join(targetDir, "SKILL.md");
   try {
     const markerStat = await fs.stat(markerPath);
+    const installedVersion = markerStat.isFile() ? await readInstalledVersion(targetDir) : null;
     return {
       exists: true,
-      cadenceInstalled: markerStat.isFile()
+      cadenceInstalled: markerStat.isFile(),
+      installedVersion
     };
   } catch {
     return {
       exists: true,
-      cadenceInstalled: false
+      cadenceInstalled: false,
+      installedVersion: null
     };
   }
 }
@@ -232,7 +236,32 @@ async function addInstallState(targets) {
   );
 }
 
-function printUpdateNotice(selectedTargets) {
+function formatVersionTransition(installState, installerVersion) {
+  if (!installState?.cadenceInstalled) {
+    return `not-installed > ${installerVersion}`;
+  }
+
+  const currentVersion = installState.installedVersion || "unknown";
+  return `${currentVersion} > ${installerVersion}`;
+}
+
+async function readInstalledVersion(targetDir) {
+  const markerPath = path.join(targetDir, INSTALL_VERSION_MARKER);
+  try {
+    const raw = await fs.readFile(markerPath, "utf8");
+    const trimmed = raw.trim();
+    return trimmed || null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeInstalledVersion(targetDir, installerVersion) {
+  const markerPath = path.join(targetDir, INSTALL_VERSION_MARKER);
+  await fs.writeFile(markerPath, `${installerVersion}\n`, "utf8");
+}
+
+function printUpdateNotice(selectedTargets, installerVersion) {
   const cadenceInstalled = selectedTargets.filter((target) => target.installState?.cadenceInstalled);
   const existingPaths = selectedTargets.filter(
     (target) => target.installState?.exists && !target.installState?.cadenceInstalled
@@ -246,7 +275,7 @@ function printUpdateNotice(selectedTargets) {
 
   cadenceInstalled.forEach((target) => {
     output.write(
-      `- ${target.label}: existing Cadence skill detected at ${target.targetDir}. Files will be overwritten.\n`
+      `- ${target.label}: existing Cadence skill detected at ${target.targetDir} (${formatVersionTransition(target.installState, installerVersion)}). Files will be overwritten.\n`
     );
   });
 
@@ -307,10 +336,13 @@ function parseInteractiveSelection(selection, targets) {
   return uniqueIndexes.map((idx) => targets[idx]);
 }
 
-function renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice) {
+function renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice, installerVersion) {
   output.write("\x1b[2J\x1b[H");
   colorizeAsciiBanner().forEach((line) => output.write(`${line}\n`));
   output.write("\n");
+  output.write(
+    `${style("Version:", ANSI.bold, ANSI.brightBlue)} ${style(installerVersion, ANSI.bold, ANSI.white)}\n`
+  );
   output.write(style("Select tools to install Cadence skill into (multi-select).\n", ANSI.bold, ANSI.white));
   output.write(
     style(
@@ -330,8 +362,12 @@ function renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice) {
       : isSelected
         ? style(target.label, ANSI.brightGreen)
         : target.label;
+    const versionText = style(
+      `[${formatVersionTransition(target.installState, installerVersion)}]`,
+      isCurrent ? ANSI.brightCyan : ANSI.dim
+    );
     const targetPathText = isCurrent ? style(target.targetDir, ANSI.brightCyan) : style(target.targetDir, ANSI.dim);
-    output.write(`${pointer} [${checked}] ${labelText} (${targetPathText})\n`);
+    output.write(`${pointer} [${checked}] ${labelText} ${versionText} (${targetPathText})\n`);
   });
 
   output.write(`\n${style("Selected:", ANSI.bold, ANSI.brightBlue)} ${style(String(selectedIndexes.size), ANSI.bold, ANSI.white)}\n`);
@@ -340,7 +376,7 @@ function renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice) {
   }
 }
 
-function chooseTargetsWithTui(targets) {
+function chooseTargetsWithTui(targets, installerVersion) {
   return new Promise((resolve, reject) => {
     if (!input.isTTY || !output.isTTY) {
       reject(new Error("Interactive TUI requires a TTY."));
@@ -386,7 +422,7 @@ function chooseTargetsWithTui(targets) {
     const finishSelection = () => {
       if (selectedIndexes.size === 0) {
         notice = "Select at least one tool before continuing.";
-        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice, installerVersion);
         return;
       }
 
@@ -413,14 +449,14 @@ function chooseTargetsWithTui(targets) {
       if (key === " " || key === "\u001b[3~") {
         toggleCurrent();
         notice = "";
-        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice, installerVersion);
         return;
       }
 
       if (key === "a" || key === "A") {
         toggleAll();
         notice = "";
-        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice, installerVersion);
         return;
       }
 
@@ -433,14 +469,14 @@ function chooseTargetsWithTui(targets) {
       if (key === "\u001b[A" || key === "k" || key === "K") {
         moveCursor(-1);
         notice = "";
-        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice, installerVersion);
         return;
       }
 
       if (key === "\u001b[B" || key === "j" || key === "J") {
         moveCursor(1);
         notice = "";
-        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+        renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice, installerVersion);
       }
     };
 
@@ -448,17 +484,20 @@ function chooseTargetsWithTui(targets) {
     input.setRawMode(true);
     input.resume();
     input.on("data", onData);
-    renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice);
+    renderMultiSelectTui(targets, cursorIndex, selectedIndexes, notice, installerVersion);
   });
 }
 
-async function chooseTargetsWithTextPrompt(targets) {
+async function chooseTargetsWithTextPrompt(targets, installerVersion) {
   const rl = readline.createInterface({ input, output });
   try {
+    output.write(`Version: ${installerVersion}\n`);
     output.write("Select tools to install Cadence skill into (multi-select).\n");
     output.write("Enter numbers separated by commas, or type 'all'.\n\n");
     targets.forEach((target, idx) => {
-      output.write(`${idx + 1}. ${target.label} (${target.targetDir})\n`);
+      output.write(
+        `${idx + 1}. ${target.label} [${formatVersionTransition(target.installState, installerVersion)}] (${target.targetDir})\n`
+      );
     });
     const answer = await rl.question("\nSelection: ");
     return parseInteractiveSelection(answer, targets);
@@ -467,7 +506,7 @@ async function chooseTargetsWithTextPrompt(targets) {
   }
 }
 
-async function chooseTargets(parsed, targets) {
+async function chooseTargets(parsed, targets, installerVersion) {
   if (parsed.all) {
     return targets;
   }
@@ -478,10 +517,10 @@ async function chooseTargets(parsed, targets) {
   }
 
   if (input.isTTY && output.isTTY) {
-    return chooseTargetsWithTui(targets);
+    return chooseTargetsWithTui(targets, installerVersion);
   }
 
-  return chooseTargetsWithTextPrompt(targets);
+  return chooseTargetsWithTextPrompt(targets, installerVersion);
 }
 
 async function copySkillContents(sourceDir, targetDir) {
@@ -501,7 +540,7 @@ async function copySkillContents(sourceDir, targetDir) {
   );
 }
 
-async function confirmInstall(parsed, selectedTargets) {
+async function confirmInstall(parsed, selectedTargets, installerVersion) {
   if (parsed.yes) {
     return true;
   }
@@ -515,7 +554,9 @@ async function confirmInstall(parsed, selectedTargets) {
         : target.installState?.exists
           ? style(" [existing path detected: conflicting files may be overwritten]", ANSI.salmon)
           : "";
-      output.write(`${style("-", ANSI.dim)} ${style(target.targetDir, ANSI.periwinkle)}${suffix}\n`);
+      output.write(
+        `${style("-", ANSI.dim)} ${style(target.targetDir, ANSI.periwinkle)} ${style(`[${formatVersionTransition(target.installState, installerVersion)}]`, ANSI.dim)}${suffix}\n`
+      );
     });
     const answer = await rl.question(style("Continue? [y/N]: ", ANSI.bold, ANSI.white));
     return answer.trim().toLowerCase() === "y" || answer.trim().toLowerCase() === "yes";
@@ -545,11 +586,11 @@ async function main() {
   const homeDir = parsed.home || os.homedir();
   const sourceDir = resolveSourceDir();
   await ensureSourceDir(sourceDir);
-  const targets = buildTargets(homeDir);
+  const targets = await addInstallState(buildTargets(homeDir));
 
   let selectedTargets;
   try {
-    selectedTargets = await chooseTargets(parsed, targets);
+    selectedTargets = await chooseTargets(parsed, targets, installerVersion);
   } catch (error) {
     output.write(`Error: ${error.message}\n`);
     process.exitCode = 1;
@@ -561,10 +602,10 @@ async function main() {
     return;
   }
 
-  const selectedTargetsWithState = await addInstallState(selectedTargets);
-  printUpdateNotice(selectedTargetsWithState);
+  const selectedTargetsWithState = selectedTargets;
+  printUpdateNotice(selectedTargetsWithState, installerVersion);
 
-  const confirmed = await confirmInstall(parsed, selectedTargetsWithState);
+  const confirmed = await confirmInstall(parsed, selectedTargetsWithState, installerVersion);
   if (!confirmed) {
     output.write("Installation cancelled.\n");
     return;
@@ -576,8 +617,11 @@ async function main() {
 
   for (const target of selectedTargetsWithState) {
     await copySkillContents(sourceDir, target.targetDir);
+    await writeInstalledVersion(target.targetDir, installerVersion);
     const action = target.installState?.exists ? "Updated" : "Installed";
-    output.write(`${style(action, ANSI.bold, ANSI.brightGreen)} ${style(target.label, ANSI.bold, ANSI.white)}: ${style(target.targetDir, ANSI.periwinkle)}\n`);
+    output.write(
+      `${style(action, ANSI.bold, ANSI.brightGreen)} ${style(target.label, ANSI.bold, ANSI.white)}: ${style(target.targetDir, ANSI.periwinkle)} ${style(`[${formatVersionTransition(target.installState, installerVersion)}]`, ANSI.dim)}\n`
+    );
   }
 
   output.write(
