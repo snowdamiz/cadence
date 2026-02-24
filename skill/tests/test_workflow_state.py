@@ -6,7 +6,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from workflow_state import default_data, set_workflow_item_status
+from workflow_state import default_data, reconcile_workflow_state, set_workflow_item_status
 
 
 def find_item(items: list[dict], item_id: str) -> dict | None:
@@ -20,6 +20,17 @@ def find_item(items: list[dict], item_id: str) -> dict | None:
 
 
 class WorkflowStateStatusTests(unittest.TestCase):
+    def test_default_plan_includes_brownfield_intake_before_ideation(self) -> None:
+        data = default_data()
+        wave = find_item(data["workflow"]["plan"], "wave-initialize-cadence")
+        self.assertIsNotNone(wave)
+
+        children = wave.get("children", [])
+        order = [child.get("id") for child in children if isinstance(child, dict)]
+        self.assertIn("task-brownfield-intake", order)
+        self.assertLess(order.index("task-prerequisite-gate"), order.index("task-brownfield-intake"))
+        self.assertLess(order.index("task-brownfield-intake"), order.index("task-ideation"))
+
     def test_non_binary_legacy_task_statuses_are_preserved(self) -> None:
         for status in ("in_progress", "blocked", "skipped"):
             with self.subTest(status=status):
@@ -47,6 +58,17 @@ class WorkflowStateStatusTests(unittest.TestCase):
         scaffold = find_item(updated["workflow"]["plan"], "task-scaffold")
         self.assertIsNotNone(scaffold)
         self.assertEqual(scaffold["status"], "complete")
+
+    def test_missing_brownfield_legacy_flag_falls_back_to_ideation_completion(self) -> None:
+        data = default_data()
+        state = data.setdefault("state", {})
+        state.pop("brownfield-intake-completed", None)
+        state["ideation-completed"] = True
+        updated = reconcile_workflow_state(data, cadence_dir_exists=True)
+
+        intake = find_item(updated["workflow"]["plan"], "task-brownfield-intake")
+        self.assertIsNotNone(intake)
+        self.assertEqual(intake["status"], "complete")
 
 
 if __name__ == "__main__":

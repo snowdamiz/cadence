@@ -29,7 +29,7 @@ Top-level:
 
 Install-time payload (what gets copied to user tool skill paths):
 - `skill/SKILL.md` (orchestrator policy)
-- `skill/skills/*` (subskills: scaffold, prerequisite-gate, ideator, researcher, ideation-updater, project-progress)
+- `skill/skills/*` (subskills: scaffold, prerequisite-gate, brownfield-intake, ideator, researcher, ideation-updater, project-progress)
 - `skill/scripts/*` (Python/shell execution engine)
 - `skill/config/commit-conventions.json`
 - `skill/assets/cadence.json` + `skill/assets/AGENTS.md`
@@ -53,11 +53,12 @@ Per Cadence turn, high-level policy:
 2. If `.cadence` missing under `PROJECT_ROOT`: run scaffold gate.
 3. Read workflow route (`read-workflow-state.py --project-root "$PROJECT_ROOT"`) and treat `route.skill_name` as authoritative.
 4. Run prerequisite gate only when route points to `prerequisite-gate`; skip it when route has already advanced.
-5. Use project-progress skill for resume/status intents.
+5. Run project mode intake when route points to `brownfield-intake` to classify greenfield vs brownfield and capture existing-code baseline.
+6. Use project-progress skill for resume/status intents.
 6. If user manually calls a subskill: resolve project root, then assert workflow route for that root first.
 7. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
-8. For net-new ideation kickoff: after scaffold+prereq in-thread, force a fresh-chat handoff before running `ideator`.
-9. After that initial handoff, route directly to the active subskill in the same chat on future Cadence invocations (for example `ideator` once scaffold/prereq are done). When ideation completes and route advances to `researcher`, Cadence now forces a new-chat handoff (`Start a new chat with a new agent and say "plan my project".`).
+8. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
+9. After that initial handoff, route directly to the active subskill in the same chat on future Cadence invocations (for example `ideator` once scaffold/prereq/intake are done). When ideation completes and route advances to `researcher`, Cadence now forces a new-chat handoff (`Start a new chat with a new agent and say "plan my project".`).
 
 Design emphasis:
 - deterministic routing
@@ -81,6 +82,7 @@ Default model includes:
 Current default actionable tasks:
 - `task-scaffold` -> `scaffold`
 - `task-prerequisite-gate` -> `prerequisite-gate`
+- `task-brownfield-intake` -> `brownfield-intake`
 - `task-ideation` -> `ideator`
 - `task-research` -> `researcher`
 
@@ -99,6 +101,7 @@ Current default actionable tasks:
 ## Subskills (Functional Intent)
 - `scaffold`: create `.cadence`, initialize `cadence.json`, persist scripts-dir, configure `.gitignore` track/ignore policy, initialize git/repo mode, checkpoint.
 - `prerequisite-gate`: verify Python availability (`python3`), persist prerequisite pass, checkpoint.
+- `brownfield-intake`: classify project mode and persist deterministic baseline inventory for existing repositories before ideation routing.
 - `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, and treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
 - `researcher`: execute ideation research agenda in dynamic, bounded one-pass runs; persist findings to `cadence.json`; enforce handoff between passes to reset chat context.
 - `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
@@ -118,6 +121,7 @@ Scaffold/prereq:
 - `scaffold-project.sh`: idempotent `.cadence` bootstrap (uses template fallback JSON).
 - `run-scaffold-gate.py`: route assert + scaffold + scripts-dir init + state validation.
 - `run-prerequisite-gate.py`: route assert + scripts-dir resolve + python check + state write.
+- `run-brownfield-intake.py`: route assert + project mode classification + brownfield inventory baseline persistence.
 - `handle-prerequisite-state.py`: read/write `prerequisites-pass`.
 - `resolve-project-scripts-dir.py` + `init-cadence-scripts-dir.py`: self-heal script path state.
 - `configure-cadence-gitignore.py`: `.cadence` track/ignore policy updates.
@@ -131,7 +135,7 @@ Ideation:
 - `get-ideation.py`, `expose-ideation.py`, `render-ideation-summary.py`: machine/human ideation reads and summaries.
 
 Git checkpoints:
-- `check-project-repo-status.py`: detect git+GitHub remote readiness; persist repo mode.
+- `check-project-repo-status.py`: detect git remote readiness (provider-agnostic by default); persist repo mode.
 - `git-checkpoint.py`: stage paths, build conventioned commit message, commit, optional push.
 - `finalize-skill-checkpoint.py`: split changed files into atomic semantic batches, call `git-checkpoint.py` per batch, honor local-only mode.
 
@@ -139,7 +143,7 @@ Git checkpoints:
 `skill/config/commit-conventions.json` defines:
 - commit type: `cadence`
 - subject max: 72 chars
-- scopes/checkpoints (scaffold, prerequisite-gate, ideator, researcher, ideation-updater, project-progress)
+- scopes/checkpoints (scaffold, prerequisite-gate, brownfield-intake, ideator, researcher, ideation-updater, project-progress)
 - atomic batching constraints:
   - max files per commit (default 4)
   - semantic file groups (`cadence-state`, `skill-instructions`, `docs`, `scripts`, `tests`, `config`, `source`)
@@ -178,7 +182,7 @@ What is strong:
 - installer supports many AI tool ecosystems with one package
 
 What is intentionally narrow right now:
-- default workflow tracks Foundation setup plus ideation research execution (scaffold/prereq/ideation/research)
+- default workflow tracks Foundation setup plus project mode intake and ideation research execution (scaffold/prereq/intake/ideation/research)
 - prerequisite gate currently checks only `python3` presence
 - in-repo automated tests cover ideation normalization, workflow state transitions, route assertions, checkpoint batching, and research-pass payload validation
 - this repo ships framework/instructions; project-specific execution happens in downstream repos that install the skill

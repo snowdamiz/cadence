@@ -45,7 +45,8 @@ description: Structured project operating system for end-to-end greenfield or br
 1. Check for `.cadence` in the project root.
 2. If `.cadence` is missing, invoke `skills/scaffold/SKILL.md`.
 3. Scaffold initializes and persists `state.cadence-scripts-dir` for later subskill commands.
-4. If `.cadence` exists, skip scaffold.
+4. If `.cadence` exists but `.cadence/cadence.json` is missing, invoke `skills/scaffold/SKILL.md` for recovery.
+5. If both `.cadence` and `.cadence/cadence.json` exist, skip scaffold.
 
 ## Workflow Route Gate (Mandatory At Entry And Transitions)
 1. After scaffold handling on Cadence entry, run `python3 scripts/read-workflow-state.py --project-root "$PROJECT_ROOT"` and parse the JSON response.
@@ -59,7 +60,12 @@ description: Structured project operating system for end-to-end greenfield or br
 
 ## Prerequisite Gate (Conditional)
 1. Invoke `skills/prerequisite-gate/SKILL.md` only when `route.skill_name` is `prerequisite-gate`.
-2. If `route.skill_name` is not `prerequisite-gate` (for example `ideator` or `researcher`), skip prerequisite gate and follow the active route instead.
+2. If `route.skill_name` is not `prerequisite-gate` (for example `brownfield-intake`, `ideator`, or `researcher`), skip prerequisite gate and follow the active route instead.
+
+## Project Mode Intake Gate (Conditional)
+1. Invoke `skills/brownfield-intake/SKILL.md` only when `route.skill_name` is `brownfield-intake`.
+2. Use this gate to classify `greenfield` vs `brownfield` execution mode and capture baseline inventory for existing codebases.
+3. If `route.skill_name` is not `brownfield-intake`, skip this gate and follow the active route instead.
 
 ## Progress / Resume Flow
 1. Invoke `skills/project-progress/SKILL.md` when the user asks to continue/resume or requests progress status (for example: "continue the project", "how far along are we?", "where did we leave off?").
@@ -73,7 +79,7 @@ description: Structured project operating system for end-to-end greenfield or br
 5. Do not execute state-changing subskill steps when assertion fails.
 
 ## Ideation Flow
-1. When scaffold and prerequisite both complete in this same conversation for a net-new project and route advances to `ideator`, force a subskill handoff and end with this exact line: `Start a new chat and either say "help me define my project" or share your project brief.`
+1. When scaffold, prerequisite, and project mode intake complete in this same conversation for a net-new project and route advances to `ideator`, force a subskill handoff and end with this exact line: `Start a new chat and either say "help me define my project" or share your project brief.`
 2. In subsequent conversations, if the workflow route is `ideator`, do not rerun prerequisite gate.
 3. If the user asks to define the project or provides a brief while route is `ideator`, invoke `skills/ideator/SKILL.md`.
 4. If route is `ideator` and the user has not provided ideation input yet, ask one kickoff ideation question in-thread and continue.

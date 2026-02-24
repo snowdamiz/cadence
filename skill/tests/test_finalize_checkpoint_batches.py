@@ -62,6 +62,31 @@ class FinalizeCheckpointBatchTests(unittest.TestCase):
         )
         self.assertEqual(filtered, ["docs/readme.md", "scripts/run.sh"])
 
+    def test_normalize_requested_pathspecs_scopes_to_project_root(self) -> None:
+        repo_root = Path("/tmp/repo")
+        project_root = repo_root / "apps" / "service-a"
+
+        scoped = finalize_module.normalize_requested_pathspecs(
+            requested_pathspecs=[".", "src", "docs/**"],
+            project_root=project_root,
+            repo_root=repo_root,
+        )
+        self.assertEqual(
+            scoped,
+            ["apps/service-a", "apps/service-a/src", "apps/service-a/docs/**"],
+        )
+
+    def test_normalize_requested_pathspecs_rejects_parent_escape(self) -> None:
+        repo_root = Path("/tmp/repo")
+        project_root = repo_root / "apps" / "service-a"
+
+        with self.assertRaises(finalize_module.FinalizeError):
+            finalize_module.normalize_requested_pathspecs(
+                requested_pathspecs=["../shared"],
+                project_root=project_root,
+                repo_root=repo_root,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

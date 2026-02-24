@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check GitHub repo status and persist state.repo-enabled when .cadence exists."""
+"""Check repository remote status and persist state.repo-enabled when .cadence exists."""
 
 from __future__ import annotations
 
@@ -42,7 +42,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--set-local-only",
         action="store_true",
-        help="Persist local-only mode (repo-enabled=false) when no GitHub remote is configured.",
+        help="Persist local-only mode (repo-enabled=false) when remote policy is not satisfied.",
+    )
+    parser.add_argument(
+        "--remote-policy",
+        choices=("any", "github"),
+        default="any",
+        help="Remote policy for repo-enabled detection.",
     )
     return parser.parse_args()
 
@@ -90,7 +96,7 @@ def parse_remotes(remote_text: str) -> list[dict[str, str]]:
     return remotes
 
 
-def detect_git_repo(project_root: Path) -> dict[str, Any]:
+def detect_git_repo(project_root: Path, *, remote_policy: str) -> dict[str, Any]:
     inside_result = run_command(["git", "rev-parse", "--is-inside-work-tree"], project_root)
     git_initialized = inside_result.returncode == 0 and inside_result.stdout.strip() == "true"
 
@@ -101,12 +107,17 @@ def detect_git_repo(project_root: Path) -> dict[str, Any]:
             repo_root = root_result.stdout.strip()
 
     remotes: list[dict[str, str]] = []
+    primary_remote_name = ""
+    primary_remote_url = ""
     github_remote_name = ""
     github_remote_url = ""
     if git_initialized:
         remote_result = run_command(["git", "remote", "-v"], project_root)
         if remote_result.returncode == 0:
             remotes = parse_remotes(remote_result.stdout)
+            if remotes:
+                primary_remote_name = remotes[0].get("name", "")
+                primary_remote_url = remotes[0].get("url", "")
 
         for remote in remotes:
             url = remote.get("url", "")
@@ -115,13 +126,21 @@ def detect_git_repo(project_root: Path) -> dict[str, Any]:
                 github_remote_url = url
                 break
 
+    remote_configured = bool(primary_remote_name and primary_remote_url)
     github_remote_configured = bool(github_remote_name and github_remote_url)
-    repo_enabled_detected = bool(git_initialized and github_remote_configured)
+    if remote_policy == "github":
+        repo_enabled_detected = bool(git_initialized and github_remote_configured)
+    else:
+        repo_enabled_detected = bool(git_initialized and remote_configured)
 
     return {
         "git_initialized": git_initialized,
         "repo_root": repo_root,
         "remotes": remotes,
+        "remote_policy": remote_policy,
+        "remote_configured": remote_configured,
+        "primary_remote_name": primary_remote_name,
+        "primary_remote_url": primary_remote_url,
         "github_remote_configured": github_remote_configured,
         "github_remote_name": github_remote_name,
         "github_remote_url": github_remote_url,
@@ -166,7 +185,7 @@ def main() -> int:
 
     write_project_root_hint(SCRIPT_DIR, project_root)
 
-    repo_status = detect_git_repo(project_root)
+    repo_status = detect_git_repo(project_root, remote_policy=args.remote_policy)
     cadence_exists = (project_root / CADENCE_JSON_PATH).exists()
     state_updated = False
 
@@ -202,6 +221,10 @@ def main() -> int:
         "state_updated": state_updated,
         "repo_enabled": repo_enabled_state,
         "repo_enabled_detected": bool(repo_status["repo_enabled_detected"]),
+        "remote_policy": str(repo_status.get("remote_policy", args.remote_policy)),
+        "remote_configured": bool(repo_status.get("remote_configured", False)),
+        "primary_remote_name": repo_status.get("primary_remote_name", ""),
+        "primary_remote_url": repo_status.get("primary_remote_url", ""),
         "git_initialized": bool(repo_status["git_initialized"]),
         "github_remote_configured": bool(repo_status["github_remote_configured"]),
         "github_remote_name": repo_status.get("github_remote_name", ""),

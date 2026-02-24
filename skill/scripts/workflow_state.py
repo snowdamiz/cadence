@@ -12,7 +12,7 @@ from typing import Any
 
 from ideation_research import ensure_ideation_research_defaults
 
-WORKFLOW_SCHEMA_VERSION = 3
+WORKFLOW_SCHEMA_VERSION = 4
 VALID_STATUSES = {"pending", "in_progress", "complete", "blocked", "skipped"}
 COMPLETED_STATUSES = {"complete", "skipped"}
 LEGACY_PRESERVE_STATUSES = {"in_progress", "blocked", "skipped"}
@@ -33,6 +33,11 @@ DEFAULT_ROUTE_BY_ITEM_ID = {
         "skill_name": "ideator",
         "skill_path": "skills/ideator/SKILL.md",
         "reason": "Ideation has not been completed yet.",
+    },
+    "task-brownfield-intake": {
+        "skill_name": "brownfield-intake",
+        "skill_path": "skills/brownfield-intake/SKILL.md",
+        "reason": "Project mode and existing codebase baseline have not been captured yet.",
     },
     "task-research": {
         "skill_name": "researcher",
@@ -93,6 +98,12 @@ def default_workflow_plan() -> list[dict[str, Any]]:
                                     "route": DEFAULT_ROUTE_BY_ITEM_ID["task-prerequisite-gate"],
                                 },
                                 {
+                                    "id": "task-brownfield-intake",
+                                    "kind": "task",
+                                    "title": "Capture project mode and baseline",
+                                    "route": DEFAULT_ROUTE_BY_ITEM_ID["task-brownfield-intake"],
+                                },
+                                {
                                     "id": "task-ideation",
                                     "kind": "task",
                                     "title": "Complete ideation",
@@ -121,6 +132,8 @@ def default_data() -> dict[str, Any]:
             "research-completed": False,
             "cadence-scripts-dir": "",
             "repo-enabled": False,
+            "project-mode": "unknown",
+            "brownfield-intake-completed": False,
         },
         "project-details": {},
         "ideation": ensure_ideation_research_defaults({}),
@@ -194,8 +207,80 @@ def _normalize_plan(plan: Any) -> list[dict[str, Any]]:
     if not isinstance(plan, list):
         plan = default_workflow_plan()
     normalized = [_normalize_item(item, f"item-{index + 1}") for index, item in enumerate(plan)]
+    _ensure_brownfield_intake_task(normalized)
     _ensure_research_task(normalized)
     return normalized
+
+
+def _ensure_brownfield_intake_task(plan: list[dict[str, Any]]) -> None:
+    if _find_item_by_id(plan, "task-brownfield-intake") is not None:
+        return
+
+    intake_task = _normalize_item(
+        {
+            "id": "task-brownfield-intake",
+            "kind": "task",
+            "title": "Capture project mode and baseline",
+            "route": DEFAULT_ROUTE_BY_ITEM_ID["task-brownfield-intake"],
+        },
+        "task-brownfield-intake",
+    )
+
+    def inject_after_prerequisite(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+
+            for index, child in enumerate(children):
+                if not isinstance(child, dict):
+                    continue
+                if child.get("id") == "task-prerequisite-gate":
+                    children.insert(index + 1, deepcopy(intake_task))
+                    return True
+
+            if inject_after_prerequisite(children):
+                return True
+        return False
+
+    if inject_after_prerequisite(plan):
+        return
+
+    def inject_before_ideation(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+
+            for index, child in enumerate(children):
+                if not isinstance(child, dict):
+                    continue
+                if child.get("id") == "task-ideation":
+                    children.insert(index, deepcopy(intake_task))
+                    return True
+
+            if inject_before_ideation(children):
+                return True
+        return False
+
+    if inject_before_ideation(plan):
+        return
+
+    # Fallback for custom plans; append to the first actionable container.
+    def append_to_first_container(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            children = item.get("children", [])
+            if not isinstance(children, list):
+                continue
+            if children and all(isinstance(child, dict) and not child.get("children") for child in children):
+                children.append(deepcopy(intake_task))
+                return True
+            if append_to_first_container(children):
+                return True
+        return False
+
+    if not append_to_first_container(plan):
+        plan.append(deepcopy(intake_task))
 
 
 def _ensure_research_task(plan: list[dict[str, Any]]) -> None:
@@ -346,9 +431,13 @@ def _collect_nodes(
 def _legacy_completion_map(data: dict[str, Any], *, cadence_dir_exists: bool) -> dict[str, bool]:
     state = data.get("state")
     state = state if isinstance(state, dict) else {}
+    brownfield_completed = state.get("brownfield-intake-completed")
+    if brownfield_completed is None:
+        brownfield_completed = state.get("ideation-completed", False)
     return {
         "task-scaffold": bool(cadence_dir_exists),
         "task-prerequisite-gate": bool(data.get("prerequisites-pass", False)),
+        "task-brownfield-intake": bool(brownfield_completed),
         "task-ideation": bool(state.get("ideation-completed", False)),
         "task-research": bool(state.get("research-completed", False)),
     }
@@ -381,15 +470,25 @@ def _sync_legacy_flags_from_plan(data: dict[str, Any], plan: list[dict[str, Any]
         data["state"] = state
 
     prerequisite_item = _find_item_by_id(plan, "task-prerequisite-gate")
+    brownfield_item = _find_item_by_id(plan, "task-brownfield-intake")
     ideation_item = _find_item_by_id(plan, "task-ideation")
     research_item = _find_item_by_id(plan, "task-research")
 
     if prerequisite_item is not None:
         data["prerequisites-pass"] = _is_complete_status(_coerce_status(prerequisite_item.get("status")))
+    if brownfield_item is not None:
+        state["brownfield-intake-completed"] = _is_complete_status(_coerce_status(brownfield_item.get("status")))
     if ideation_item is not None:
         state["ideation-completed"] = _is_complete_status(_coerce_status(ideation_item.get("status")))
     if research_item is not None:
         state["research-completed"] = _is_complete_status(_coerce_status(research_item.get("status")))
+
+
+def _normalize_project_mode(value: Any) -> str:
+    mode = str(value).strip().lower()
+    if mode not in {"unknown", "greenfield", "brownfield"}:
+        return "unknown"
+    return mode
 
 
 def _build_node_ref(node: dict[str, Any]) -> dict[str, Any]:
@@ -503,6 +602,12 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
         state["repo-enabled"] = False
     else:
         state["repo-enabled"] = bool(state.get("repo-enabled", False))
+    if "project-mode" not in state:
+        state["project-mode"] = "unknown"
+    state["project-mode"] = _normalize_project_mode(state.get("project-mode", "unknown"))
+    if "brownfield-intake-completed" not in state:
+        state["brownfield-intake-completed"] = bool(state.get("ideation-completed", False))
+    state["brownfield-intake-completed"] = bool(state.get("brownfield-intake-completed", False))
 
     if "prerequisites-pass" not in data:
         data["prerequisites-pass"] = False
@@ -510,6 +615,14 @@ def reconcile_workflow_state(data: dict[str, Any], *, cadence_dir_exists: bool) 
         state["research-completed"] = False
     if "project-details" not in data or not isinstance(data.get("project-details"), dict):
         data["project-details"] = {}
+    project_details = data["project-details"]
+    details_mode = _normalize_project_mode(project_details.get("mode", "unknown"))
+    if state["project-mode"] == "unknown" and details_mode != "unknown":
+        state["project-mode"] = details_mode
+    project_details["mode"] = state["project-mode"]
+    baseline = project_details.get("brownfield_baseline")
+    if not isinstance(baseline, dict):
+        project_details["brownfield_baseline"] = {}
     if "ideation" not in data or not isinstance(data.get("ideation"), dict):
         data["ideation"] = {}
     data["ideation"] = ensure_ideation_research_defaults(data.get("ideation"))

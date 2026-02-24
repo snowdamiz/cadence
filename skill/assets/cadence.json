@@ -4,10 +4,12 @@
         "ideation-completed": false,
         "research-completed": false,
         "cadence-scripts-dir": "",
-        "repo-enabled": false
+        "repo-enabled": false,
+        "project-mode": "unknown",
+        "brownfield-intake-completed": false
     },
     "workflow": {
-        "schema_version": 3,
+        "schema_version": 4,
         "plan": [
             {
                 "id": "milestone-foundation",
@@ -45,6 +47,16 @@
                                         }
                                     },
                                     {
+                                        "id": "task-brownfield-intake",
+                                        "kind": "task",
+                                        "title": "Capture project mode and baseline",
+                                        "route": {
+                                            "skill_name": "brownfield-intake",
+                                            "skill_path": "skills/brownfield-intake/SKILL.md",
+                                            "reason": "Project mode and existing codebase baseline have not been captured yet."
+                                        }
+                                    },
+                                    {
                                         "id": "task-ideation",
                                         "kind": "task",
                                         "title": "Complete ideation",
@@ -72,7 +84,10 @@
             }
         ]
     },
-    "project-details": {},
+    "project-details": {
+        "mode": "unknown",
+        "brownfield_baseline": {}
+    },
     "ideation": {
         "research_agenda": {
             "version": 1,

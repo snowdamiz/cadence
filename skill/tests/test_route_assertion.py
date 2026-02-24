@@ -57,6 +57,29 @@ class RouteAssertionTests(unittest.TestCase):
             self.assertEqual(mismatch.returncode, 2)
             self.assertIn("WORKFLOW_ROUTE_MISMATCH", mismatch.stderr)
 
+    def test_missing_cadence_json_with_existing_dir_routes_to_scaffold(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir)
+            (project_root / ".cadence").mkdir(parents=True, exist_ok=True)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(ASSERT_ROUTE_SCRIPT),
+                    "--skill-name",
+                    "scaffold",
+                    "--project-root",
+                    str(project_root),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["status"], "ok")
+            self.assertEqual(payload["expected_skill"], "scaffold")
+
 
 if __name__ == "__main__":
     unittest.main()

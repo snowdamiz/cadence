@@ -10,10 +10,12 @@ description: Initialize Cadence project scaffolding for first-time setup. Use wh
 3. `run-scaffold-gate.py` performs workflow route assertion internally; if it errors, stop and surface the exact error to the user.
 4. Resolve helper scripts dir by running `python3 ../../scripts/resolve-project-scripts-dir.py --project-root "$PROJECT_ROOT"` and store stdout in `CADENCE_SCRIPTS_DIR`.
 5. Run `python3 "$CADENCE_SCRIPTS_DIR/check-project-repo-status.py" --project-root "$PROJECT_ROOT"` and parse the JSON output. Treat `repo_enabled` as the authoritative push mode (`false` means local-only commits).
-6. If `repo_enabled` is false, ask the user: `No GitHub remote is configured yet. Do you want to initialize a GitHub repo now? (yes/no)`.
+6. If `repo_enabled` is false, ask the user: `No qualifying git remote is configured yet. Do you want to configure one now? (yes/no)`.
 7. If the user answers yes:
    - If `git_initialized` is false, run `cd "$PROJECT_ROOT" && git init`.
-   - Ask for repo name and visibility, then run `cd "$PROJECT_ROOT" && gh repo create <name> --source . --remote origin --<public|private>`.
+   - Ask whether they want GitHub auto-creation (`gh repo create`) or to provide an existing remote URL.
+   - For GitHub auto-creation: ask for repo name and visibility, then run `cd "$PROJECT_ROOT" && gh repo create <name> --source . --remote origin --<public|private>`.
+   - For an existing remote URL: run `cd "$PROJECT_ROOT" && git remote add origin <remote-url>` (or update remote URL if `origin` already exists).
    - Rerun `python3 "$CADENCE_SCRIPTS_DIR/check-project-repo-status.py" --project-root "$PROJECT_ROOT"` and verify `repo_enabled` is true.
    - If repo setup still fails, stop and surface the exact failure to the user.
 8. If the user answers no:

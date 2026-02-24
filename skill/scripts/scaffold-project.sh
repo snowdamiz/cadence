@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -d ".cadence" ]; then
+TARGET_PATH=".cadence/cadence.json"
+
+if [ -f "${TARGET_PATH}" ]; then
   echo "scaffold-skipped"
   exit 0
 fi
@@ -10,7 +12,6 @@ mkdir -p ".cadence"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_PATH="${SCRIPT_DIR}/../assets/cadence.json"
-TARGET_PATH=".cadence/cadence.json"
 
 if [ -f "${TEMPLATE_PATH}" ]; then
   cp "${TEMPLATE_PATH}" "${TARGET_PATH}"
@@ -22,10 +23,12 @@ else
         "ideation-completed": false,
         "research-completed": false,
         "cadence-scripts-dir": "",
-        "repo-enabled": false
+        "repo-enabled": false,
+        "project-mode": "unknown",
+        "brownfield-intake-completed": false
     },
     "workflow": {
-        "schema_version": 3,
+        "schema_version": 4,
         "plan": [
             {
                 "id": "milestone-foundation",
@@ -63,6 +66,16 @@ else
                                         }
                                     },
                                     {
+                                        "id": "task-brownfield-intake",
+                                        "kind": "task",
+                                        "title": "Capture project mode and baseline",
+                                        "route": {
+                                            "skill_name": "brownfield-intake",
+                                            "skill_path": "skills/brownfield-intake/SKILL.md",
+                                            "reason": "Project mode and existing codebase baseline have not been captured yet."
+                                        }
+                                    },
+                                    {
                                         "id": "task-ideation",
                                         "kind": "task",
                                         "title": "Complete ideation",
@@ -90,7 +103,10 @@ else
             }
         ]
     },
-    "project-details": {},
+    "project-details": {
+        "mode": "unknown",
+        "brownfield_baseline": {}
+    },
     "ideation": {
         "research_agenda": {
             "version": 1,

@@ -38,7 +38,9 @@ def load_state(project_root: Path):
 
     if not cadence_json_path.exists():
         data = default_data()
-        data = reconcile_workflow_state(data, cadence_dir_exists=cadence_exists)
+        # When `.cadence` exists without cadence.json, initialize recovery state
+        # with scaffold pending so route guards can re-enter scaffold safely.
+        data = reconcile_workflow_state(data, cadence_dir_exists=False)
         if cadence_exists:
             save_state(project_root, data)
         return data

@@ -32,6 +32,14 @@ def run_cmd(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+def resolve_repo_root(project_root: Path) -> Path:
+    result = run_cmd(["git", "rev-parse", "--show-toplevel"], project_root)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "NOT_A_GIT_REPOSITORY"
+        raise FinalizeError(detail)
+    return Path(result.stdout.strip()).resolve()
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Create atomic checkpoint commits for changed files at skill finalization.",
@@ -127,6 +135,61 @@ def sanitize_tag(tag: str) -> str:
     if not compact:
         compact = "batch"
     return compact[:10]
+
+
+def project_relative_root(repo_root: Path, project_root: Path) -> str:
+    try:
+        relative = project_root.resolve().relative_to(repo_root.resolve())
+    except ValueError as exc:
+        raise FinalizeError("PROJECT_ROOT_OUTSIDE_REPOSITORY") from exc
+    text = normalize_path(relative.as_posix())
+    return "." if text in {"", "."} else text
+
+
+def normalize_requested_pathspecs(
+    *,
+    requested_pathspecs: list[str],
+    project_root: Path,
+    repo_root: Path,
+) -> list[str]:
+    project_rel = project_relative_root(repo_root, project_root)
+    normalized_specs: list[str] = []
+
+    for raw in requested_pathspecs:
+        text = str(raw).strip()
+        if not text or text == ".":
+            normalized = project_rel
+        else:
+            candidate = Path(text)
+            if candidate.is_absolute():
+                try:
+                    relative = candidate.resolve().relative_to(repo_root.resolve())
+                except ValueError as exc:
+                    raise FinalizeError(f"PATHSPEC_OUTSIDE_REPOSITORY: {text}") from exc
+                normalized = normalize_path(relative.as_posix())
+            else:
+                parts = candidate.parts
+                if any(part == ".." for part in parts):
+                    raise FinalizeError(f"PATHSPEC_OUTSIDE_PROJECT_ROOT: {text}")
+                rel_text = normalize_path(text)
+                if project_rel == ".":
+                    normalized = rel_text
+                else:
+                    normalized = normalize_path(f"{project_rel}/{rel_text}")
+
+        if project_rel != ".":
+            project_prefix = project_rel.rstrip("/")
+            if normalized != project_prefix and not normalized.startswith(f"{project_prefix}/"):
+                raise FinalizeError(f"PATHSPEC_OUTSIDE_PROJECT_ROOT: {text}")
+
+        if not normalized:
+            normalized = "."
+        if normalized not in normalized_specs:
+            normalized_specs.append(normalized)
+
+    if not normalized_specs:
+        return [project_rel]
+    return normalized_specs
 
 
 def classify_path(
@@ -324,6 +387,17 @@ def main() -> int:
         print("LOCAL_GIT_REPOSITORY_NOT_INITIALIZED", file=sys.stderr)
         return 2
 
+    try:
+        repo_root = resolve_repo_root(project_root)
+        scoped_pathspecs = normalize_requested_pathspecs(
+            requested_pathspecs=[str(path) for path in args.paths],
+            project_root=project_root,
+            repo_root=repo_root,
+        )
+    except FinalizeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
     push_enabled = bool(repo_status.get("repo_enabled", False))
 
     status_result = run_cmd(
@@ -356,7 +430,7 @@ def main() -> int:
         )
         return 0
 
-    eligible_files = filter_paths(changed_files, args.paths)
+    eligible_files = filter_paths(changed_files, scoped_pathspecs)
     if not eligible_files:
         print(
             json.dumps(
@@ -399,20 +473,21 @@ def main() -> int:
 
     print(
         json.dumps(
-            {
-                "status": "ok",
-                "scope": args.scope,
-                "checkpoint": args.checkpoint,
-                "atomic": True,
+                {
+                    "status": "ok",
+                    "scope": args.scope,
+                    "checkpoint": args.checkpoint,
+                    "atomic": True,
                 "changed_file_count": len(eligible_files),
                 "batch_count": len(batches),
-                "commit_count": len(commits),
-                "push_enabled": push_enabled,
-                "repo_status": repo_status,
-                "commits": commits,
-            }
+                    "commit_count": len(commits),
+                    "push_enabled": push_enabled,
+                    "scoped_pathspecs": scoped_pathspecs,
+                    "repo_status": repo_status,
+                    "commits": commits,
+                }
+            )
         )
-    )
     return 0
 
 

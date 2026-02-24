@@ -104,6 +104,12 @@
                 "ideation-completed": "persist finalized ideation"
             }
         },
+        "brownfield-intake": {
+            "description": "Project mode classification and brownfield baseline capture",
+            "checkpoints": {
+                "baseline-captured": "capture project mode and baseline inventory"
+            }
+        },
         "ideation-updater": {
             "description": "Iterative ideation updates",
             "checkpoints": {

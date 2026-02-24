@@ -29,7 +29,9 @@ def load_state(project_root: Path, requested_skill: str) -> dict:
             )
             raise SystemExit(2)
         data = default_data()
-        return reconcile_workflow_state(data, cadence_dir_exists=cadence_exists)
+        # When `.cadence` exists but cadence.json is missing, recover through the
+        # scaffold route instead of treating scaffold as already complete.
+        return reconcile_workflow_state(data, cadence_dir_exists=False)
 
     try:
         with cadence_json_path.open("r", encoding="utf-8") as file:
