@@ -9,6 +9,8 @@ interface:
     Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
     Enforce the strict user-facing response templates from skills/ideator/SKILL.md.
     Ask one question at a time, build an execution-ready ideation object and complete research_agenda.
+    Once the main concept and domain are clear, generate the most extensive research-topic list possible,
+    show the full list, and ask whether to continue/add/remove topics before continuing discovery.
     Before persistence, always return the full research topic list and let the user add/remove topics.
     Only after explicit topic approval and explicit yes/no persistence confirmation,
     rerun route assertion from PROJECT_ROOT, run scripts/prepare-ideation-research.py,
