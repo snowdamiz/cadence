@@ -146,23 +146,58 @@ else
             "planning": {
                 "target_effort_per_pass": 12,
                 "max_topics_per_pass": 4,
+                "max_passes_per_topic": 3,
+                "max_total_passes": 120,
+                "max_passes_per_chat": 6,
+                "context_window_tokens": 128000,
+                "handoff_context_threshold_percent": 70,
+                "estimated_fixed_tokens_per_chat": 12000,
+                "estimated_tokens_in_overhead_per_pass": 1200,
+                "estimated_tokens_out_overhead_per_pass": 400,
                 "latest_round": 0
             },
             "summary": {
                 "topic_total": 0,
                 "topic_complete": 0,
+                "topic_caveated": 0,
                 "topic_needs_followup": 0,
                 "topic_pending": 0,
                 "pass_pending": 0,
                 "pass_complete": 0,
-                "next_pass_id": ""
+                "next_pass_id": "",
+                "context_budget_tokens": 128000,
+                "context_threshold_tokens": 89600,
+                "context_threshold_percent": 70,
+                "context_tokens_in": 0,
+                "context_tokens_out": 0,
+                "context_tokens_total": 12000,
+                "context_percent_estimate": 9.38,
+                "context_passes_completed": 0
             },
             "topic_status": {},
             "pass_queue": [],
             "pass_history": [],
             "source_registry": [],
+            "chat_context": {
+                "session_index": 0,
+                "passes_completed": 0,
+                "estimated_tokens_fixed": 12000,
+                "estimated_tokens_in": 0,
+                "estimated_tokens_out": 0,
+                "estimated_tokens_total": 12000,
+                "estimated_context_percent": 9.38,
+                "budget_tokens": 128000,
+                "threshold_tokens": 89600,
+                "threshold_percent": 70,
+                "last_reset_at": "",
+                "last_updated_at": "",
+                "last_pass_id": "",
+                "last_pass_tokens_in": 0,
+                "last_pass_tokens_out": 0
+            },
             "handoff_required": false,
-            "handoff_message": "Start a new chat and say \"continue research\"."
+            "handoff_message": "Start a new chat and say \"continue research\".",
+            "handoff_reason": ""
         }
     },
     "planning": {

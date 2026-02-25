@@ -93,6 +93,12 @@ def default_research_execution() -> dict[str, Any]:
             "max_topics_per_pass": 4,
             "max_passes_per_topic": 3,
             "max_total_passes": 120,
+            "max_passes_per_chat": 6,
+            "context_window_tokens": 128000,
+            "handoff_context_threshold_percent": 70,
+            "estimated_fixed_tokens_per_chat": 12000,
+            "estimated_tokens_in_overhead_per_pass": 1200,
+            "estimated_tokens_out_overhead_per_pass": 400,
             "latest_round": 0,
         },
         "summary": {
@@ -104,13 +110,39 @@ def default_research_execution() -> dict[str, Any]:
             "pass_pending": 0,
             "pass_complete": 0,
             "next_pass_id": "",
+            "context_budget_tokens": 128000,
+            "context_threshold_tokens": 89600,
+            "context_threshold_percent": 70,
+            "context_tokens_in": 0,
+            "context_tokens_out": 0,
+            "context_tokens_total": 12000,
+            "context_percent_estimate": 9.38,
+            "context_passes_completed": 0,
         },
         "topic_status": {},
         "pass_queue": [],
         "pass_history": [],
         "source_registry": [],
+        "chat_context": {
+            "session_index": 0,
+            "passes_completed": 0,
+            "estimated_tokens_fixed": 12000,
+            "estimated_tokens_in": 0,
+            "estimated_tokens_out": 0,
+            "estimated_tokens_total": 12000,
+            "estimated_context_percent": 9.38,
+            "budget_tokens": 128000,
+            "threshold_tokens": 89600,
+            "threshold_percent": 70,
+            "last_reset_at": "",
+            "last_updated_at": "",
+            "last_pass_id": "",
+            "last_pass_tokens_in": 0,
+            "last_pass_tokens_out": 0,
+        },
         "handoff_required": False,
         "handoff_message": DEFAULT_RESEARCH_HANDOFF_MESSAGE,
+        "handoff_reason": "",
     }
 
 
@@ -206,6 +238,50 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
         max_total_passes = 1
 
     try:
+        max_passes_per_chat = int(planning.get("max_passes_per_chat", 6))
+    except (TypeError, ValueError):
+        max_passes_per_chat = 6
+    if max_passes_per_chat < 1:
+        max_passes_per_chat = 1
+
+    try:
+        context_window_tokens = int(planning.get("context_window_tokens", 128000))
+    except (TypeError, ValueError):
+        context_window_tokens = 128000
+    if context_window_tokens < 1000:
+        context_window_tokens = 1000
+
+    try:
+        handoff_context_threshold_percent = int(planning.get("handoff_context_threshold_percent", 70))
+    except (TypeError, ValueError):
+        handoff_context_threshold_percent = 70
+    if handoff_context_threshold_percent < 1:
+        handoff_context_threshold_percent = 1
+    if handoff_context_threshold_percent > 95:
+        handoff_context_threshold_percent = 95
+
+    try:
+        estimated_fixed_tokens_per_chat = int(planning.get("estimated_fixed_tokens_per_chat", 12000))
+    except (TypeError, ValueError):
+        estimated_fixed_tokens_per_chat = 12000
+    if estimated_fixed_tokens_per_chat < 0:
+        estimated_fixed_tokens_per_chat = 0
+
+    try:
+        estimated_tokens_in_overhead_per_pass = int(planning.get("estimated_tokens_in_overhead_per_pass", 1200))
+    except (TypeError, ValueError):
+        estimated_tokens_in_overhead_per_pass = 1200
+    if estimated_tokens_in_overhead_per_pass < 0:
+        estimated_tokens_in_overhead_per_pass = 0
+
+    try:
+        estimated_tokens_out_overhead_per_pass = int(planning.get("estimated_tokens_out_overhead_per_pass", 400))
+    except (TypeError, ValueError):
+        estimated_tokens_out_overhead_per_pass = 400
+    if estimated_tokens_out_overhead_per_pass < 0:
+        estimated_tokens_out_overhead_per_pass = 0
+
+    try:
         latest_round = int(planning.get("latest_round", 0))
     except (TypeError, ValueError):
         latest_round = 0
@@ -217,6 +293,12 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
         "max_topics_per_pass": max_topics,
         "max_passes_per_topic": max_passes_per_topic,
         "max_total_passes": max_total_passes,
+        "max_passes_per_chat": max_passes_per_chat,
+        "context_window_tokens": context_window_tokens,
+        "handoff_context_threshold_percent": handoff_context_threshold_percent,
+        "estimated_fixed_tokens_per_chat": estimated_fixed_tokens_per_chat,
+        "estimated_tokens_in_overhead_per_pass": estimated_tokens_in_overhead_per_pass,
+        "estimated_tokens_out_overhead_per_pass": estimated_tokens_out_overhead_per_pass,
         "latest_round": latest_round,
     }
 
@@ -277,6 +359,13 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
         if planned_effort < 0:
             planned_effort = 0
 
+        try:
+            estimated_tokens_in = int(entry.get("estimated_tokens_in", 0) or 0)
+        except (TypeError, ValueError):
+            estimated_tokens_in = 0
+        if estimated_tokens_in < 0:
+            estimated_tokens_in = 0
+
         pass_queue.append(
             {
                 "pass_id": pass_id,
@@ -286,6 +375,7 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
                 "planned_effort": planned_effort,
                 "created_at": _string(entry.get("created_at")),
                 "started_at": _string(entry.get("started_at")),
+                "estimated_tokens_in": estimated_tokens_in,
             }
         )
 
@@ -330,6 +420,88 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
     normalized["pass_history"] = pass_history
     normalized["source_registry"] = source_registry
 
+    chat_context_raw = raw_execution.get("chat_context")
+    chat_context_raw = dict(chat_context_raw) if isinstance(chat_context_raw, dict) else {}
+    budget_tokens = context_window_tokens
+    threshold_tokens = max(1, int((budget_tokens * handoff_context_threshold_percent) / 100.0))
+
+    try:
+        session_index = int(chat_context_raw.get("session_index", 0))
+    except (TypeError, ValueError):
+        session_index = 0
+    if session_index < 0:
+        session_index = 0
+
+    try:
+        passes_completed = int(chat_context_raw.get("passes_completed", 0))
+    except (TypeError, ValueError):
+        passes_completed = 0
+    if passes_completed < 0:
+        passes_completed = 0
+
+    try:
+        estimated_tokens_fixed = int(
+            chat_context_raw.get("estimated_tokens_fixed", estimated_fixed_tokens_per_chat)
+        )
+    except (TypeError, ValueError):
+        estimated_tokens_fixed = estimated_fixed_tokens_per_chat
+    if estimated_tokens_fixed < 0:
+        estimated_tokens_fixed = 0
+
+    try:
+        estimated_tokens_in = int(chat_context_raw.get("estimated_tokens_in", 0))
+    except (TypeError, ValueError):
+        estimated_tokens_in = 0
+    if estimated_tokens_in < 0:
+        estimated_tokens_in = 0
+
+    try:
+        estimated_tokens_out = int(chat_context_raw.get("estimated_tokens_out", 0))
+    except (TypeError, ValueError):
+        estimated_tokens_out = 0
+    if estimated_tokens_out < 0:
+        estimated_tokens_out = 0
+
+    estimated_tokens_total = estimated_tokens_fixed + estimated_tokens_in + estimated_tokens_out
+    estimated_context_percent = round((estimated_tokens_total / float(budget_tokens)) * 100.0, 2)
+
+    try:
+        last_pass_tokens_in = int(chat_context_raw.get("last_pass_tokens_in", 0))
+    except (TypeError, ValueError):
+        last_pass_tokens_in = 0
+    if last_pass_tokens_in < 0:
+        last_pass_tokens_in = 0
+
+    try:
+        last_pass_tokens_out = int(chat_context_raw.get("last_pass_tokens_out", 0))
+    except (TypeError, ValueError):
+        last_pass_tokens_out = 0
+    if last_pass_tokens_out < 0:
+        last_pass_tokens_out = 0
+
+    normalized["chat_context"] = {
+        "session_index": session_index,
+        "passes_completed": passes_completed,
+        "estimated_tokens_fixed": estimated_tokens_fixed,
+        "estimated_tokens_in": estimated_tokens_in,
+        "estimated_tokens_out": estimated_tokens_out,
+        "estimated_tokens_total": estimated_tokens_total,
+        "estimated_context_percent": estimated_context_percent,
+        "budget_tokens": budget_tokens,
+        "threshold_tokens": threshold_tokens,
+        "threshold_percent": handoff_context_threshold_percent,
+        "last_reset_at": _string(chat_context_raw.get("last_reset_at")),
+        "last_updated_at": _string(chat_context_raw.get("last_updated_at")),
+        "last_pass_id": _string(chat_context_raw.get("last_pass_id")),
+        "last_pass_tokens_in": last_pass_tokens_in,
+        "last_pass_tokens_out": last_pass_tokens_out,
+    }
+
+    handoff_reason = _string(raw_execution.get("handoff_reason")).lower()
+    if handoff_reason not in {"", "context_budget", "pass_cap"}:
+        handoff_reason = ""
+    normalized["handoff_reason"] = handoff_reason
+
     total_topics = len(topic_status)
     topic_complete = len(
         [entry for entry in topic_status.values() if entry.get("status") in RESEARCH_TOPIC_COMPLETE_STATUSES]
@@ -366,6 +538,14 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
         "pass_pending": len(pass_queue),
         "pass_complete": len(pass_history),
         "next_pass_id": next_pass_id,
+        "context_budget_tokens": budget_tokens,
+        "context_threshold_tokens": threshold_tokens,
+        "context_threshold_percent": handoff_context_threshold_percent,
+        "context_tokens_in": estimated_tokens_in,
+        "context_tokens_out": estimated_tokens_out,
+        "context_tokens_total": estimated_tokens_total,
+        "context_percent_estimate": estimated_context_percent,
+        "context_passes_completed": passes_completed,
     }
     return normalized
 
@@ -441,6 +621,24 @@ def reset_research_execution(ideation: Any) -> dict[str, Any]:
         "pass_pending": 0,
         "pass_complete": 0,
         "next_pass_id": "",
+        "context_budget_tokens": execution["planning"]["context_window_tokens"],
+        "context_threshold_tokens": int(
+            (execution["planning"]["context_window_tokens"] * execution["planning"]["handoff_context_threshold_percent"])
+            / 100.0
+        ),
+        "context_threshold_percent": execution["planning"]["handoff_context_threshold_percent"],
+        "context_tokens_in": 0,
+        "context_tokens_out": 0,
+        "context_tokens_total": execution["planning"]["estimated_fixed_tokens_per_chat"],
+        "context_percent_estimate": round(
+            (
+                execution["planning"]["estimated_fixed_tokens_per_chat"]
+                / float(max(1, execution["planning"]["context_window_tokens"]))
+            )
+            * 100.0,
+            2,
+        ),
+        "context_passes_completed": 0,
     }
 
     normalized["research_execution"] = execution

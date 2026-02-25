@@ -10,6 +10,8 @@ interface:
     Enforce the strict user-facing response templates from skills/planner/SKILL.md.
     Gather context with scripts/run-planner.py --project-root "$PROJECT_ROOT" discover, then draft and confirm a
     roadmap containing milestones and phases only (no waves/tasks) using detail_level milestone_phase_v1.
+    Render proposal and captured roadmap sections as tables, including milestone titles and each milestone's phase titles
+    so users can accept or request edits by name.
     Persist with scripts/run-planner.py --project-root "$PROJECT_ROOT" complete --stdin.
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope planner
     --checkpoint plan-created --paths . (allow status=no_changes; treat failures as blocking).

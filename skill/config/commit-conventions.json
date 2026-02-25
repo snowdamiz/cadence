@@ -128,6 +128,12 @@
                 "progress-checked": "check progress and route next action"
             }
         },
+        "project-overview": {
+            "description": "Project overview reporting checks",
+            "checkpoints": {
+                "overview-reviewed": "read full roadmap and report current project position"
+            }
+        },
         "researcher": {
             "description": "Ideation research pass execution",
             "checkpoints": {

@@ -1,0 +1,14 @@
+interface:
+  display_name: "Project Overview"
+  short_description: "Read-only tabular overview of roadmap and current progress"
+  default_prompt: >-
+    Follow skills/project-overview/SKILL.md for exact behavior.
+    Run scripts/run-skill-entry-gate.py --require-cadence --include-workflow-state, then use its JSON output for
+    PROJECT_ROOT (project_root) and CADENCE_SCRIPTS_DIR (cadence_scripts_dir).
+    Never read or edit .cadence/cadence.json directly (including cat/rg/jq/Read); use Cadence scripts for all state reads and writes.
+    Read overview data with scripts/run-project-overview.py --project-root "$PROJECT_ROOT".
+    Render output using the strict response format and tables defined in skills/project-overview/SKILL.md.
+    Include every roadmap row; do not truncate the roadmap table.
+    Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope project-overview
+    --checkpoint overview-reviewed --paths . (allow status=no_changes; treat failures as blocking).
+    Keep replies concise and hide internal traces unless asked.

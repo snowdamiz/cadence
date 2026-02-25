@@ -201,6 +201,36 @@ def planning_contract() -> dict[str, Any]:
     }
 
 
+def roadmap_outline(milestones_raw: Any) -> list[dict[str, Any]]:
+    milestones = milestones_raw if isinstance(milestones_raw, list) else []
+    outline: list[dict[str, Any]] = []
+    for milestone in milestones:
+        if not isinstance(milestone, dict):
+            continue
+        milestone_id = _coerce_text(milestone.get("milestone_id"))
+        title = _coerce_text(milestone.get("title")) or milestone_id or "Untitled milestone"
+        raw_phases = milestone.get("phases")
+        phases = raw_phases if isinstance(raw_phases, list) else []
+        phase_titles: list[str] = []
+        for phase in phases:
+            if not isinstance(phase, dict):
+                continue
+            phase_id = _coerce_text(phase.get("phase_id"))
+            phase_title = _coerce_text(phase.get("title")) or phase_id
+            if phase_title:
+                phase_titles.append(phase_title)
+
+        outline.append(
+            {
+                "milestone_id": milestone_id,
+                "title": title,
+                "phase_count": len(phases),
+                "phase_titles": phase_titles,
+            }
+        )
+    return outline
+
+
 def summarize_context(data: dict[str, Any]) -> dict[str, Any]:
     ideation = data.get("ideation")
     ideation = ideation if isinstance(ideation, dict) else {}
@@ -284,6 +314,7 @@ def summarize_context(data: dict[str, Any]) -> dict[str, Any]:
             "detail_level": _coerce_text(planning.get("detail_level")),
             "milestone_count": len(milestones),
             "updated_at": _coerce_text(planning.get("updated_at")),
+            "milestone_outline": roadmap_outline(milestones),
         },
         "planner_payload_contract": planning_contract(),
     }
@@ -532,6 +563,7 @@ def complete_flow(args: argparse.Namespace, project_root: Path, data: dict[str, 
             "milestone_count": len(milestones),
             "phase_count": phase_count,
             "decomposition_pending": bool(normalized.get("decomposition_pending", True)),
+            "milestone_outline": roadmap_outline(milestones),
         },
         "next_route": data.get("workflow", {}).get("next_route", {}),
     }

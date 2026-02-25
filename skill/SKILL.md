@@ -94,10 +94,11 @@ description: Structured project operating system for end-to-end greenfield or br
 
 ## Manual Subskill Safety Gate
 1. If the user manually requests a Cadence subskill, first resolve `PROJECT_ROOT` with `python3 scripts/resolve-project-root.py --project-root "$PWD"`.
-2. Run `python3 scripts/assert-workflow-route.py --skill-name <subskill> --project-root "$PROJECT_ROOT"` before executing that subskill.
-3. Ensure that direct subskill execution still applies this skill's Repo Status Gate and Git Checkpoints rules.
-4. If route assertion fails, stop and surface the exact script error.
-5. Do not execute state-changing subskill steps when assertion fails.
+2. If the requested subskill is the read-only utility `project-overview`, skip route assertion and run it directly.
+3. For all other subskills, run `python3 scripts/assert-workflow-route.py --skill-name <subskill> --project-root "$PROJECT_ROOT"` before executing that subskill.
+4. Ensure that direct subskill execution still applies this skill's Repo Status Gate and Git Checkpoints rules.
+5. If route assertion fails, stop and surface the exact script error.
+6. Do not execute state-changing subskill steps when assertion fails.
 
 ## Ideation Flow
 1. When scaffold, prerequisite, and project mode intake complete in this same conversation for a net-new project and route advances to `ideator`, force a subskill handoff and end with this exact line: `Start a new chat and either say "help me define my project" or share your project brief.`
@@ -114,8 +115,8 @@ description: Structured project operating system for end-to-end greenfield or br
 
 ## Research Flow
 1. If the workflow route is `researcher`, invoke `skills/researcher/SKILL.md`.
-2. Enforce one research pass per conversation so context stays bounded.
-3. When the researcher flow reports additional passes remain (`handoff_required=true`), end with this exact line: `Start a new chat and say "continue research".`
+2. Run bounded multi-pass research in the same conversation while `handoff_required=false`.
+3. Treat `handoff_required=true` from `run-research-pass.py complete` as the context-boundary stop signal (triggered by token-budget estimate or per-chat pass cap); then end with this exact line: `Start a new chat and say "continue research".`
 4. Continue routing to researcher on subsequent chats until workflow reports the research task complete.
 5. For greenfield projects, when research completes and route advances to `planner`, invoke `skills/planner/SKILL.md` in the next routed conversation.
 

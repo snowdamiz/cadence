@@ -30,7 +30,7 @@ Top-level:
 
 Install-time payload (what gets copied to user tool skill paths):
 - `skill/SKILL.md` (orchestrator policy)
-- `skill/skills/*` (subskills: scaffold, prerequisite-gate, brownfield-intake, brownfield-documenter, ideator, researcher, ideation-updater, project-progress)
+- `skill/skills/*` (subskills: scaffold, prerequisite-gate, brownfield-intake, brownfield-documenter, ideator, researcher, planner, ideation-updater, project-progress, project-overview)
 - `skill/scripts/*` (Python/shell execution engine)
 - `skill/config/commit-conventions.json`
 - `skill/assets/cadence.json` + `skill/assets/AGENTS.md`
@@ -63,7 +63,7 @@ Per Cadence turn, high-level policy:
 10. Whether routed from root Cadence or invoked directly, subskills run the same repo-status gate and finalize through `finalize-skill-checkpoint.py` with scope/checkpoint commit conventions.
 11. For net-new ideation kickoff: after scaffold+prereq+project-mode-intake in-thread, force a fresh-chat handoff before running `ideator`.
 12. For brownfield repositories: after intake, route to `brownfield-documenter` (not `ideator`) and force a new-chat handoff before documentation.
-13. After ideator or brownfield-documenter completion, route to researcher and force a new-chat handoff (`Start a new chat with a new agent and say "research my project".`).
+13. After ideator or brownfield-documenter completion, route to researcher and hand off into a dedicated researcher conversation (`Start a new chat with a new agent and say "research my project".`), then allow bounded multi-pass continuation in that same chat until context budget triggers handoff.
 14. For greenfield flows, after researcher completion route to planner for roadmap planning (milestones/phases in initial planner scope).
 
 Design emphasis:
@@ -122,10 +122,11 @@ Mode-based task override:
 - `brownfield-intake`: classify project mode and persist deterministic baseline inventory for existing repositories before ideation routing.
 - `brownfield-documenter`: investigate existing repo evidence deeply and persist canonical ideation + research agenda structures for brownfield projects.
 - `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, run an early exhaustive research-topic checkpoint (continue/add/remove) once concept and domain are clear, continue discovery, then run final pre-persistence topic review before persisting; treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
-- `researcher`: execute ideation research agenda in dynamic, bounded one-pass runs; persist findings to `cadence.json`; enforce strict user-facing pass-result format and handoff between passes to reset chat context.
+- `researcher`: execute ideation research agenda in dynamic, bounded multi-pass runs; persist findings to `cadence.json`; estimate context usage from token in/out totals, continue in-chat while under threshold, and hand off only when budget/cap requires a reset.
 - `planner`: for greenfield projects, read Cadence ideation/research context and persist high-level roadmap planning (milestones/phases only) into `cadence.json`.
 - `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
 - `project-progress`: read normalized workflow state, report progress (research-only metrics when route is `researcher`), route next action, checkpoint.
+- `project-overview`: read-only utility subskill (manual invocation, not workflow-routed) that returns tabular project metadata, current position, and full milestone/phase/wave/task roadmap progress.
 - all subskills now include strict, skill-specific user-facing response templates to keep handoffs and completion output deterministic.
 
 ## Script System (Execution Backplane)
@@ -160,7 +161,8 @@ Ideation:
 - `ideation_research.py`: shared normalization and validation for ideation research agenda shape and entity/topic/block relationships.
 - `prepare-ideation-research.py`: normalize and validate ideation payload research agenda before injection.
 - `query-ideation-research.py`: granular query surface for `ideation.research_agenda` by block, topic, entity, category, tag, priority, and text.
-- `run-research-pass.py`: dynamic pass planning and per-pass persistence for ideation research execution (start one pass, complete one pass, replan unresolved topics).
+- `run-research-pass.py`: dynamic pass planning and per-pass persistence for ideation research execution (start one pass, complete one pass, replan unresolved topics) with token-based in/out context estimation and threshold-driven handoff signaling.
+- `run-project-overview.py`: read-only Cadence overview extraction for project metadata, current workflow position, level summaries, and full roadmap rows.
 - `inject-ideation.py`: validate/merge/replace ideation payload, enforce research agenda requirements when ideation is complete, route-guard when marking complete, optional payload-file deletion.
 - `get-ideation.py`, `expose-ideation.py`, `render-ideation-summary.py`: machine/human ideation reads and summaries.
 
@@ -173,7 +175,7 @@ Git checkpoints:
 `skill/config/commit-conventions.json` defines:
 - commit type: `cadence`
 - subject max: 72 chars
-- scopes/checkpoints (scaffold, prerequisite-gate, brownfield-intake, brownfield-documenter, ideator, researcher, planner, ideation-updater, project-progress)
+- scopes/checkpoints (scaffold, prerequisite-gate, brownfield-intake, brownfield-documenter, ideator, researcher, planner, ideation-updater, project-progress, project-overview)
 - atomic batching constraints:
   - max files per commit (default 4)
   - semantic file groups (`cadence-state`, `skill-instructions`, `docs`, `scripts`, `tests`, `config`, `source`)

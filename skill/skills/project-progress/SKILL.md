@@ -28,7 +28,7 @@ description: Read and route project lifecycle progress from .cadence/cadence.jso
 4. Routing rules:
    - If `next_item.id` is `complete`, explain that all currently tracked workflow items are complete and ask whether they want ideation revisions via `skills/ideation-updater/SKILL.md`.
    - If `route.skill_path` is present, invoke that skill.
-   - If route skill is `researcher`, keep execution to one pass per conversation and follow researcher handoff behavior between passes.
+   - If route skill is `researcher`, follow bounded multi-pass researcher behavior and only hand off when researcher reports `handoff_required=true`.
    - If no route is present for a non-complete item, ask the user what action they want for that item.
 5. If `workflow_state.route.skill_name` is `researcher` and `run-research-pass.py status` fails, surface the script error verbatim and stop.
 6. If `run-skill-entry-gate.py` errors (including workflow read failures), surface the script error verbatim and stop.
@@ -51,12 +51,11 @@ description: Read and route project lifecycle progress from .cadence/cadence.jso
   - Passes complete: <pass_complete>
   - Passes pending: <pass_pending>
   - Next pass: <next_pass_id or "none">
+  - Context usage: <context_percent_estimate>% of <context_budget_tokens> (threshold <context_threshold_percent>%)
   - Next route: researcher
-
-  Start a new chat and say "cadence, plan my project".
   ```
 
-  - If the user asked to continue/resume and more passes remain, append this exact line:
+  - If `handoff_required=true`, append this exact line:
     - `Start a new chat and say "continue research".`
 
 - If routing is not `researcher`, respond exactly in this shape:

@@ -18,6 +18,7 @@ description: Create a greenfield project roadmap from cadence ideation and resea
    - Do not include waves or tasks in this planner version.
    - Keep `detail_level` as `milestone_phase_v1`.
 5. Present the proposed milestone/phase roadmap to the user and ask for confirmation.
+   - Always include milestone titles and each milestone's phase titles so the user can edit names before persistence.
 6. After confirmation, persist the finalized roadmap by piping payload JSON:
    - `python3 "$CADENCE_SCRIPTS_DIR/run-planner.py" --project-root "$PROJECT_ROOT" complete --stdin`
 7. Verify persistence and route progression:
@@ -35,10 +36,19 @@ description: Create a greenfield project roadmap from cadence ideation and resea
   ```text
   Proposed roadmap:
 
-  - Milestones: <milestone_count>
-  - Phases: <phase_count>
-  - Detail level: milestone_phase_v1
-  - Key assumptions: <count or "none">
+  | Metric | Value |
+  | --- | --- |
+  | Milestones | <milestone_count> |
+  | Phases | <phase_count> |
+  | Detail level | milestone_phase_v1 |
+  | Key assumptions | <count or "none"> |
+
+  Roadmap outline:
+
+  | Milestone | Phase names |
+  | --- | --- |
+  | <milestone_title> | <phase_title_1>; <phase_title_2>; <phase_title_3> |
+  | <milestone_title> | <phase_title_1>; <phase_title_2> |
   
   Confirmation needed: Persist this roadmap? (yes/no)
   ```
@@ -48,10 +58,19 @@ description: Create a greenfield project roadmap from cadence ideation and resea
   ```text
   Roadmap captured:
 
-  - Milestones: <milestone_count>
-  - Phases: <phase_count>
-  - Detail level: milestone_phase_v1
-  - Checkpoint: planner/plan-created (<ok|no_changes>)
+  | Metric | Value |
+  | --- | --- |
+  | Milestones | <milestone_count> |
+  | Phases | <phase_count> |
+  | Detail level | milestone_phase_v1 |
+  | Checkpoint | planner/plan-created (<ok|no_changes>) |
+
+  Roadmap outline:
+
+  | Milestone | Phase names |
+  | --- | --- |
+  | <milestone_title> | <phase_title_1>; <phase_title_2>; <phase_title_3> |
+  | <milestone_title> | <phase_title_1>; <phase_title_2> |
   
   Next route: <skill_name or "workflow complete">
   ```

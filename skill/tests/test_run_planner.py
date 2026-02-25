@@ -75,6 +75,7 @@ class RunPlannerTests(unittest.TestCase):
             self.assertEqual(payload.get("mode"), "greenfield")
             self.assertIn("context", payload)
             self.assertEqual(payload["context"]["planner_payload_contract"]["detail_level"], "milestone_phase_v1")
+            self.assertIn("milestone_outline", payload["context"]["existing_plan_summary"])
 
     def test_complete_persists_milestone_phase_plan(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -126,6 +127,8 @@ class RunPlannerTests(unittest.TestCase):
             self.assertEqual(payload.get("action"), "complete")
             self.assertEqual(payload["planning_summary"]["milestone_count"], 1)
             self.assertEqual(payload["planning_summary"]["phase_count"], 1)
+            self.assertEqual(payload["planning_summary"]["milestone_outline"][0]["title"], "MVP")
+            self.assertEqual(payload["planning_summary"]["milestone_outline"][0]["phase_titles"], ["Foundations"])
 
             updated = json.loads(cadence_json.read_text(encoding="utf-8"))
             self.assertEqual(updated["planning"]["detail_level"], "milestone_phase_v1")

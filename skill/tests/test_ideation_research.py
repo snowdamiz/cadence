@@ -153,6 +153,12 @@ class IdeationResearchNormalizationTests(unittest.TestCase):
                 "max_topics_per_pass": 2,
                 "max_passes_per_topic": 0,
                 "max_total_passes": -1,
+                "max_passes_per_chat": 0,
+                "context_window_tokens": 500,
+                "handoff_context_threshold_percent": 150,
+                "estimated_fixed_tokens_per_chat": -10,
+                "estimated_tokens_in_overhead_per_pass": -30,
+                "estimated_tokens_out_overhead_per_pass": -40,
                 "latest_round": 4,
             },
             "topic_status": {
@@ -179,6 +185,12 @@ class IdeationResearchNormalizationTests(unittest.TestCase):
         self.assertEqual(execution["summary"]["topic_caveated"], 1)
         self.assertEqual(execution["planning"]["max_passes_per_topic"], 1)
         self.assertEqual(execution["planning"]["max_total_passes"], 1)
+        self.assertEqual(execution["planning"]["max_passes_per_chat"], 1)
+        self.assertEqual(execution["planning"]["context_window_tokens"], 1000)
+        self.assertEqual(execution["planning"]["handoff_context_threshold_percent"], 95)
+        self.assertEqual(execution["planning"]["estimated_fixed_tokens_per_chat"], 0)
+        self.assertEqual(execution["planning"]["estimated_tokens_in_overhead_per_pass"], 0)
+        self.assertEqual(execution["planning"]["estimated_tokens_out_overhead_per_pass"], 0)
 
 
 if __name__ == "__main__":

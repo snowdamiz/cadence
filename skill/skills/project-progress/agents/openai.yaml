@@ -11,8 +11,9 @@ interface:
     Summarize progress in user-facing terms and for continue/resume requests route via workflow_state.route.
     When workflow_state.route.skill_name is researcher (or next_item.id is task-research), run
     scripts/run-research-pass.py --project-root "$PROJECT_ROOT" status and report only research progress;
-    omit global workflow completion counts/percent unless the user explicitly asks for full workflow metrics.
-    If routed to researcher and more passes remain, use:
+    include context estimate metrics from status summary, and omit global workflow completion counts/percent
+    unless the user explicitly asks for full workflow metrics.
+    Only when researcher status indicates handoff_required=true, use:
     Start a new chat and say "continue research".
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope project-progress
     --checkpoint progress-checked --paths . (allow status=no_changes; treat failures as blocking).

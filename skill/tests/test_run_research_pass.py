@@ -465,6 +465,158 @@ class RunResearchPassValidationTests(unittest.TestCase):
             output = json.loads(result.stdout)
             self.assertEqual(output["pass"]["topic_ids"], ["topic-two"])
 
+    def test_incomplete_pass_stays_in_chat_when_context_budget_not_reached(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir)
+            write_state(
+                project_root,
+                build_cadence_state(
+                    pass_queue=[
+                        {
+                            "pass_id": "pass-r1-01",
+                            "round": 1,
+                            "status": "in_progress",
+                            "topic_ids": ["topic-one"],
+                            "planned_effort": 2,
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "started_at": "2026-01-01T00:00:01Z",
+                        }
+                    ],
+                    planning_overrides={
+                        "context_window_tokens": 100000,
+                        "handoff_context_threshold_percent": 70,
+                        "estimated_fixed_tokens_per_chat": 0,
+                        "estimated_tokens_in_overhead_per_pass": 0,
+                        "estimated_tokens_out_overhead_per_pass": 0,
+                        "max_passes_per_chat": 10,
+                    },
+                    topic_status_overrides={"topic-two": {"status": "complete"}},
+                ),
+            )
+
+            payload = {
+                "pass_summary": "Need one more pass for topic one.",
+                "topics": [
+                    {
+                        "topic_id": "topic-one",
+                        "status": "needs_followup",
+                        "summary": "More validation needed.",
+                        "confidence": "medium",
+                        "unresolved_questions": ["Need one more source"],
+                        "sources": [{"url": "https://example.com/context-low"}],
+                    }
+                ],
+            }
+            result = run_complete(project_root, pass_id="pass-r1-01", payload=payload)
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+            output = json.loads(result.stdout)
+            self.assertFalse(output["research_complete"])
+            self.assertFalse(output["handoff_required"])
+            self.assertEqual(output["handoff_reason"], "")
+            self.assertLess(output["summary"]["context_percent_estimate"], 70.0)
+
+    def test_incomplete_pass_requires_handoff_when_context_budget_reached(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir)
+            write_state(
+                project_root,
+                build_cadence_state(
+                    pass_queue=[
+                        {
+                            "pass_id": "pass-r1-01",
+                            "round": 1,
+                            "status": "in_progress",
+                            "topic_ids": ["topic-one"],
+                            "planned_effort": 2,
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "started_at": "2026-01-01T00:00:01Z",
+                        }
+                    ],
+                    planning_overrides={
+                        "context_window_tokens": 2000,
+                        "handoff_context_threshold_percent": 50,
+                        "estimated_fixed_tokens_per_chat": 900,
+                        "estimated_tokens_in_overhead_per_pass": 0,
+                        "estimated_tokens_out_overhead_per_pass": 0,
+                        "max_passes_per_chat": 10,
+                    },
+                    topic_status_overrides={"topic-two": {"status": "complete"}},
+                ),
+            )
+
+            payload = {
+                "pass_summary": "Need one more pass for topic one.",
+                "topics": [
+                    {
+                        "topic_id": "topic-one",
+                        "status": "needs_followup",
+                        "summary": "Still unresolved.",
+                        "confidence": "medium",
+                        "unresolved_questions": ["Need one more source"],
+                        "sources": [{"url": "https://example.com/context-high"}],
+                    }
+                ],
+            }
+            result = run_complete(project_root, pass_id="pass-r1-01", payload=payload)
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+            output = json.loads(result.stdout)
+            self.assertFalse(output["research_complete"])
+            self.assertTrue(output["handoff_required"])
+            self.assertEqual(output["handoff_reason"], "context_budget")
+            self.assertGreaterEqual(output["summary"]["context_percent_estimate"], 50.0)
+
+    def test_incomplete_pass_requires_handoff_when_chat_pass_cap_reached(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir)
+            write_state(
+                project_root,
+                build_cadence_state(
+                    pass_queue=[
+                        {
+                            "pass_id": "pass-r1-01",
+                            "round": 1,
+                            "status": "in_progress",
+                            "topic_ids": ["topic-one"],
+                            "planned_effort": 2,
+                            "created_at": "2026-01-01T00:00:00Z",
+                            "started_at": "2026-01-01T00:00:01Z",
+                        }
+                    ],
+                    planning_overrides={
+                        "context_window_tokens": 200000,
+                        "handoff_context_threshold_percent": 90,
+                        "estimated_fixed_tokens_per_chat": 0,
+                        "estimated_tokens_in_overhead_per_pass": 0,
+                        "estimated_tokens_out_overhead_per_pass": 0,
+                        "max_passes_per_chat": 1,
+                    },
+                    topic_status_overrides={"topic-two": {"status": "complete"}},
+                ),
+            )
+
+            payload = {
+                "pass_summary": "Need one more pass for topic one.",
+                "topics": [
+                    {
+                        "topic_id": "topic-one",
+                        "status": "needs_followup",
+                        "summary": "Still unresolved.",
+                        "confidence": "medium",
+                        "unresolved_questions": ["Need one more source"],
+                        "sources": [{"url": "https://example.com/pass-cap"}],
+                    }
+                ],
+            }
+            result = run_complete(project_root, pass_id="pass-r1-01", payload=payload)
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+            output = json.loads(result.stdout)
+            self.assertFalse(output["research_complete"])
+            self.assertTrue(output["handoff_required"])
+            self.assertEqual(output["handoff_reason"], "pass_cap")
+
 
 if __name__ == "__main__":
     unittest.main()

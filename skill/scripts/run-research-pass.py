@@ -88,6 +88,13 @@ def coerce_positive_int(value: Any, default: int, *, minimum: int = 1) -> int:
     return number
 
 
+def coerce_percent_int(value: Any, default: int, *, minimum: int = 1, maximum: int = 95) -> int:
+    number = coerce_positive_int(value, default, minimum=minimum)
+    if number > maximum:
+        return maximum
+    return number
+
+
 def planning_config(execution: dict[str, Any]) -> dict[str, int]:
     planning = execution.get("planning")
     if not isinstance(planning, dict):
@@ -99,10 +106,46 @@ def planning_config(execution: dict[str, Any]) -> dict[str, int]:
         "max_topics_per_pass": coerce_positive_int(planning.get("max_topics_per_pass", 4), 4),
         "max_passes_per_topic": coerce_positive_int(planning.get("max_passes_per_topic", 3), 3),
         "max_total_passes": coerce_positive_int(planning.get("max_total_passes", 120), 120),
+        "max_passes_per_chat": coerce_positive_int(planning.get("max_passes_per_chat", 6), 6),
+        "context_window_tokens": coerce_positive_int(
+            planning.get("context_window_tokens", 128000), 128000, minimum=1000
+        ),
+        "handoff_context_threshold_percent": coerce_percent_int(
+            planning.get("handoff_context_threshold_percent", 70), 70
+        ),
+        "estimated_fixed_tokens_per_chat": coerce_positive_int(
+            planning.get("estimated_fixed_tokens_per_chat", 12000), 12000, minimum=0
+        ),
+        "estimated_tokens_in_overhead_per_pass": coerce_positive_int(
+            planning.get("estimated_tokens_in_overhead_per_pass", 1200), 1200, minimum=0
+        ),
+        "estimated_tokens_out_overhead_per_pass": coerce_positive_int(
+            planning.get("estimated_tokens_out_overhead_per_pass", 400), 400, minimum=0
+        ),
         "latest_round": coerce_positive_int(planning.get("latest_round", 0), 0, minimum=0),
     }
     planning.update(config)
     return config
+
+
+def context_threshold_tokens(config: dict[str, int]) -> int:
+    budget = config["context_window_tokens"]
+    percent = config["handoff_context_threshold_percent"]
+    return max(1, int(math.floor((budget * percent) / 100.0)))
+
+
+def estimate_tokens(value: Any) -> int:
+    if isinstance(value, str):
+        text = value
+    else:
+        try:
+            text = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        except (TypeError, ValueError):
+            text = coerce_string(value)
+    if not text:
+        return 0
+    # Pragmatic heuristic: ~1 token per 4 characters for mixed English/json text.
+    return max(1, int(math.ceil(len(text) / 4.0)))
 
 
 def parse_args() -> argparse.Namespace:
@@ -349,6 +392,7 @@ def rebuild_pass_queue(execution: dict[str, Any], topic_map: dict[str, dict[str,
                     "planned_effort": current_effort,
                     "created_at": timestamp,
                     "started_at": "",
+                    "estimated_tokens_in": 0,
                 }
             )
             pass_index += 1
@@ -368,6 +412,7 @@ def rebuild_pass_queue(execution: dict[str, Any], topic_map: dict[str, dict[str,
                 "planned_effort": current_effort,
                 "created_at": timestamp,
                 "started_at": "",
+                "estimated_tokens_in": 0,
             }
         )
 
@@ -509,10 +554,112 @@ def prune_pass_queue(execution: dict[str, Any]) -> None:
                 "planned_effort": coerce_positive_int(entry.get("planned_effort", 0), 0, minimum=0),
                 "created_at": coerce_string(entry.get("created_at")),
                 "started_at": coerce_string(entry.get("started_at")),
+                "estimated_tokens_in": coerce_positive_int(entry.get("estimated_tokens_in", 0), 0, minimum=0),
             }
         )
 
     execution["pass_queue"] = filtered_queue
+
+
+def ensure_chat_context(execution: dict[str, Any], *, timestamp: str, reset: bool = False) -> dict[str, Any]:
+    config = planning_config(execution)
+    raw = execution.get("chat_context")
+    raw = raw if isinstance(raw, dict) else {}
+
+    prior_session_index = coerce_positive_int(raw.get("session_index", 0), 0, minimum=0)
+    session_index = prior_session_index + 1 if reset else prior_session_index
+    fixed_tokens = (
+        config["estimated_fixed_tokens_per_chat"]
+        if reset
+        else coerce_positive_int(
+            raw.get("estimated_tokens_fixed", config["estimated_fixed_tokens_per_chat"]),
+            config["estimated_fixed_tokens_per_chat"],
+            minimum=0,
+        )
+    )
+
+    passes_completed = 0 if reset else coerce_positive_int(raw.get("passes_completed", 0), 0, minimum=0)
+    tokens_in = 0 if reset else coerce_positive_int(raw.get("estimated_tokens_in", 0), 0, minimum=0)
+    tokens_out = 0 if reset else coerce_positive_int(raw.get("estimated_tokens_out", 0), 0, minimum=0)
+
+    budget_tokens = config["context_window_tokens"]
+    threshold_percent = config["handoff_context_threshold_percent"]
+    threshold_tokens = context_threshold_tokens(config)
+    tokens_total = fixed_tokens + tokens_in + tokens_out
+    estimated_percent = round((tokens_total / float(budget_tokens)) * 100.0, 2)
+
+    chat_context = {
+        "session_index": session_index,
+        "passes_completed": passes_completed,
+        "estimated_tokens_fixed": fixed_tokens,
+        "estimated_tokens_in": tokens_in,
+        "estimated_tokens_out": tokens_out,
+        "estimated_tokens_total": tokens_total,
+        "estimated_context_percent": estimated_percent,
+        "budget_tokens": budget_tokens,
+        "threshold_tokens": threshold_tokens,
+        "threshold_percent": threshold_percent,
+        "last_reset_at": timestamp if reset else coerce_string(raw.get("last_reset_at")),
+        "last_updated_at": timestamp if reset else coerce_string(raw.get("last_updated_at")),
+        "last_pass_id": "" if reset else coerce_string(raw.get("last_pass_id")),
+        "last_pass_tokens_in": 0 if reset else coerce_positive_int(raw.get("last_pass_tokens_in", 0), 0, minimum=0),
+        "last_pass_tokens_out": 0
+        if reset
+        else coerce_positive_int(raw.get("last_pass_tokens_out", 0), 0, minimum=0),
+    }
+    execution["chat_context"] = chat_context
+    return chat_context
+
+
+def apply_pass_token_estimate(
+    execution: dict[str, Any],
+    *,
+    pass_id: str,
+    estimated_tokens_in: int,
+    estimated_tokens_out: int,
+    timestamp: str,
+) -> dict[str, Any]:
+    chat_context = ensure_chat_context(execution, timestamp=timestamp, reset=False)
+    chat_context["passes_completed"] = coerce_positive_int(chat_context.get("passes_completed", 0), 0, minimum=0) + 1
+    chat_context["estimated_tokens_in"] = (
+        coerce_positive_int(chat_context.get("estimated_tokens_in", 0), 0, minimum=0)
+        + max(0, estimated_tokens_in)
+    )
+    chat_context["estimated_tokens_out"] = (
+        coerce_positive_int(chat_context.get("estimated_tokens_out", 0), 0, minimum=0)
+        + max(0, estimated_tokens_out)
+    )
+    fixed_tokens = coerce_positive_int(chat_context.get("estimated_tokens_fixed", 0), 0, minimum=0)
+    budget_tokens = max(1, coerce_positive_int(chat_context.get("budget_tokens", 128000), 128000))
+    total_tokens = fixed_tokens + chat_context["estimated_tokens_in"] + chat_context["estimated_tokens_out"]
+    chat_context["estimated_tokens_total"] = total_tokens
+    chat_context["estimated_context_percent"] = round((total_tokens / float(budget_tokens)) * 100.0, 2)
+    chat_context["last_pass_id"] = pass_id
+    chat_context["last_pass_tokens_in"] = max(0, estimated_tokens_in)
+    chat_context["last_pass_tokens_out"] = max(0, estimated_tokens_out)
+    chat_context["last_updated_at"] = timestamp
+    execution["chat_context"] = chat_context
+    return chat_context
+
+
+def handoff_decision(execution: dict[str, Any]) -> tuple[bool, str]:
+    config = planning_config(execution)
+    chat_context = ensure_chat_context(execution, timestamp=coerce_string(execution.get("updated_at")), reset=False)
+
+    total_tokens = coerce_positive_int(chat_context.get("estimated_tokens_total", 0), 0, minimum=0)
+    threshold_tokens = coerce_positive_int(
+        chat_context.get("threshold_tokens", context_threshold_tokens(config)),
+        context_threshold_tokens(config),
+        minimum=1,
+    )
+    if total_tokens >= threshold_tokens:
+        return True, "context_budget"
+
+    passes_completed = coerce_positive_int(chat_context.get("passes_completed", 0), 0, minimum=0)
+    if passes_completed >= config["max_passes_per_chat"]:
+        return True, "pass_cap"
+
+    return False, ""
 
 
 def recompute_execution_summary(execution: dict[str, Any]) -> None:
@@ -582,6 +729,31 @@ def recompute_execution_summary(execution: dict[str, Any]) -> None:
     if status == "complete":
         execution["handoff_required"] = False
 
+    config = planning_config(execution)
+    default_threshold_tokens = context_threshold_tokens(config)
+    chat_context = ensure_chat_context(execution, timestamp=coerce_string(execution.get("updated_at")), reset=False)
+    context_budget_tokens = coerce_positive_int(chat_context.get("budget_tokens", config["context_window_tokens"]), config["context_window_tokens"])
+    threshold_tokens_value = coerce_positive_int(
+        chat_context.get("threshold_tokens", default_threshold_tokens),
+        default_threshold_tokens,
+    )
+    context_threshold_percent = coerce_percent_int(
+        chat_context.get("threshold_percent", config.get("handoff_context_threshold_percent", 70)),
+        config.get("handoff_context_threshold_percent", 70),
+    )
+    context_tokens_in = coerce_positive_int(chat_context.get("estimated_tokens_in", 0), 0, minimum=0)
+    context_tokens_out = coerce_positive_int(chat_context.get("estimated_tokens_out", 0), 0, minimum=0)
+    context_tokens_total = coerce_positive_int(chat_context.get("estimated_tokens_total", 0), 0, minimum=0)
+    context_percent_estimate = round((context_tokens_total / float(max(1, context_budget_tokens))) * 100.0, 2)
+    context_passes_completed = coerce_positive_int(chat_context.get("passes_completed", 0), 0, minimum=0)
+
+    chat_context["estimated_tokens_total"] = context_tokens_total
+    chat_context["estimated_context_percent"] = context_percent_estimate
+    chat_context["budget_tokens"] = context_budget_tokens
+    chat_context["threshold_tokens"] = threshold_tokens_value
+    chat_context["threshold_percent"] = context_threshold_percent
+    execution["chat_context"] = chat_context
+
     execution["summary"] = {
         "topic_total": total,
         "topic_complete": complete,
@@ -591,6 +763,14 @@ def recompute_execution_summary(execution: dict[str, Any]) -> None:
         "pass_pending": len(queue),
         "pass_complete": len(history),
         "next_pass_id": next_pass_id,
+        "context_budget_tokens": context_budget_tokens,
+        "context_threshold_tokens": threshold_tokens_value,
+        "context_threshold_percent": context_threshold_percent,
+        "context_tokens_in": context_tokens_in,
+        "context_tokens_out": context_tokens_out,
+        "context_tokens_total": context_tokens_total,
+        "context_percent_estimate": context_percent_estimate,
+        "context_passes_completed": context_passes_completed,
     }
 
 
@@ -632,7 +812,7 @@ def build_pass_payload(pass_entry: dict[str, Any], topic_map: dict[str, dict[str
     }
 
 
-def parse_pass_result_payload(args: argparse.Namespace) -> tuple[dict[str, Any], Path | None]:
+def parse_pass_result_payload(args: argparse.Namespace) -> tuple[dict[str, Any], Path | None, str]:
     payload_file_path: Path | None = None
     if getattr(args, "file", None):
         payload_file_path = Path(args.file)
@@ -652,7 +832,7 @@ def parse_pass_result_payload(args: argparse.Namespace) -> tuple[dict[str, Any],
 
     if not isinstance(payload, dict):
         raise ValueError("PASS_RESULT_PAYLOAD_MUST_BE_OBJECT")
-    return payload, payload_file_path
+    return payload, payload_file_path, raw
 
 
 def next_source_id(source_registry: list[dict[str, Any]]) -> str:
@@ -781,11 +961,13 @@ def handle_status(project_root: Path) -> int:
                 "project_root": str(project_root),
                 "execution_status": coerce_string(execution.get("status"), "pending"),
                 "handoff_required": bool(execution.get("handoff_required", False)),
+                "handoff_reason": coerce_string(execution.get("handoff_reason")),
                 "handoff_message": coerce_string(
                     execution.get("handoff_message"),
                     DEFAULT_RESEARCH_HANDOFF_MESSAGE,
                 ),
                 "summary": summary,
+                "context": execution.get("chat_context", {}) if isinstance(execution, dict) else {},
                 "current_pass": in_progress,
                 "next_pass": pending,
                 "topic_status_count": len(topic_status) if isinstance(topic_status, dict) else 0,
@@ -812,14 +994,38 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
     agenda = agenda if isinstance(agenda, dict) else {}
     topic_map = topic_records(agenda)
     timestamp = utc_now()
+    config = planning_config(execution)
 
-    if bool(execution.get("handoff_required", False)) and not bool(args.ack_handoff):
+    pending_handoff = bool(execution.get("handoff_required", False))
+    handoff_reason = coerce_string(execution.get("handoff_reason")).lower()
+    chat_context = ensure_chat_context(execution, timestamp=timestamp, reset=False)
+    if pending_handoff and not bool(args.ack_handoff):
+        if handoff_reason == "context_budget":
+            print(
+                "RESEARCH_HANDOFF_REQUIRED: Start a new chat and say \"continue research\" "
+                f"before starting the next pass (estimated context {chat_context.get('estimated_context_percent', 0.0)}% "
+                f"of {chat_context.get('threshold_percent', config['handoff_context_threshold_percent'])}% threshold; rerun with --ack-handoff).",
+                file=sys.stderr,
+            )
+            return 2
+        if handoff_reason == "pass_cap":
+            print(
+                "RESEARCH_HANDOFF_REQUIRED: Start a new chat and say \"continue research\" "
+                f"before starting the next pass (chat pass cap {config['max_passes_per_chat']} reached; rerun with --ack-handoff).",
+                file=sys.stderr,
+            )
+            return 2
         print(
             "RESEARCH_HANDOFF_REQUIRED: Start a new chat and say \"continue research\" "
             "before starting the next pass (rerun with --ack-handoff).",
             file=sys.stderr,
         )
         return 2
+
+    if pending_handoff and bool(args.ack_handoff):
+        ensure_chat_context(execution, timestamp=timestamp, reset=True)
+        execution["handoff_required"] = False
+        execution["handoff_reason"] = ""
 
     enforce_topic_retry_limits(execution, topic_map, timestamp)
     enforce_total_pass_limit(execution, topic_map, timestamp)
@@ -850,6 +1056,7 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
             None,
         )
         if not isinstance(current_pass, dict):
+            execution["updated_at"] = timestamp
             recompute_execution_summary(execution)
             if execution.get("status") == "complete":
                 data.setdefault("state", {})["research-completed"] = True
@@ -885,10 +1092,20 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
             entry["updated_at"] = timestamp
 
     execution["handoff_required"] = False
+    execution["handoff_reason"] = ""
     execution["handoff_message"] = coerce_string(
         execution.get("handoff_message"),
         DEFAULT_RESEARCH_HANDOFF_MESSAGE,
     ) or DEFAULT_RESEARCH_HANDOFF_MESSAGE
+    pass_payload_preview = build_pass_payload(current_pass, topic_map, execution)
+    estimated_tokens_in = coerce_positive_int(current_pass.get("estimated_tokens_in", 0), 0, minimum=0)
+    if estimated_tokens_in < 1:
+        estimated_tokens_in = (
+            estimate_tokens(pass_payload_preview) + config["estimated_tokens_in_overhead_per_pass"]
+        )
+        current_pass["estimated_tokens_in"] = estimated_tokens_in
+    pass_payload_preview["estimated_tokens_in"] = estimated_tokens_in
+    execution["updated_at"] = timestamp
     recompute_execution_summary(execution)
 
     data.setdefault("state", {})["research-completed"] = execution.get("status") == "complete"
@@ -896,7 +1113,26 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
     data = save_state(project_root, data, cadence_json)
 
     execution = data.get("ideation", {}).get("research_execution", {})
-    current_pass_payload = build_pass_payload(current_pass, topic_map, execution)
+    queue = execution.get("pass_queue")
+    queue = queue if isinstance(queue, list) else []
+    persisted_pass = next(
+        (
+            entry
+            for entry in queue
+            if isinstance(entry, dict) and coerce_string(entry.get("pass_id")) == pass_id
+        ),
+        None,
+    )
+    current_pass_payload = build_pass_payload(
+        persisted_pass if isinstance(persisted_pass, dict) else current_pass,
+        topic_map,
+        execution,
+    )
+    current_pass_payload["estimated_tokens_in"] = coerce_positive_int(
+        (persisted_pass if isinstance(persisted_pass, dict) else current_pass).get("estimated_tokens_in", estimated_tokens_in),
+        estimated_tokens_in,
+        minimum=0,
+    )
     print(
         json.dumps(
             {
@@ -905,7 +1141,9 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
                 "action": "start",
                 "pass": current_pass_payload,
                 "summary": execution.get("summary", {}),
+                "context": execution.get("chat_context", {}),
                 "handoff_required": bool(execution.get("handoff_required", False)),
+                "handoff_reason": coerce_string(execution.get("handoff_reason")),
                 "handoff_message": coerce_string(
                     execution.get("handoff_message"),
                     DEFAULT_RESEARCH_HANDOFF_MESSAGE,
@@ -922,7 +1160,7 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
     try:
         data, cadence_json = load_state(project_root)
         require_ideation_ready(data)
-        payload, payload_file_path = parse_pass_result_payload(args)
+        payload, payload_file_path, payload_raw = parse_pass_result_payload(args)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -934,6 +1172,7 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
     agenda = agenda if isinstance(agenda, dict) else {}
     topic_map = topic_records(agenda)
     timestamp = utc_now()
+    config = planning_config(execution)
 
     queue = execution.get("pass_queue")
     queue = queue if isinstance(queue, list) else []
@@ -1058,6 +1297,23 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
     execution["topic_status"] = topic_status
 
     pass_summary = coerce_string(payload.get("pass_summary"))
+    estimated_tokens_in = coerce_positive_int(pass_entry.get("estimated_tokens_in", 0), 0, minimum=0)
+    if estimated_tokens_in < 1:
+        estimated_tokens_in = (
+            estimate_tokens(
+                {
+                    "pass_id": pass_id,
+                    "topic_ids": pass_topic_ids,
+                    "topics": [
+                        topic_map.get(topic_id, {})
+                        for topic_id in pass_topic_ids
+                    ],
+                }
+            )
+            + config["estimated_tokens_in_overhead_per_pass"]
+        )
+    estimated_tokens_out = estimate_tokens(payload_raw) + config["estimated_tokens_out_overhead_per_pass"]
+
     history = execution.get("pass_history")
     history = history if isinstance(history, list) else []
     history.append(
@@ -1068,6 +1324,8 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
             "pass_summary": pass_summary,
             "topics": pass_topic_results,
             "source_ids": sorted(set(pass_sources)),
+            "estimated_tokens_in": estimated_tokens_in,
+            "estimated_tokens_out": estimated_tokens_out,
         }
     )
     execution["pass_history"] = history
@@ -1084,6 +1342,14 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
     if not execution.get("pass_queue") and unresolved_topics(execution):
         rebuild_pass_queue(execution, topic_map, timestamp)
 
+    execution["updated_at"] = timestamp
+    apply_pass_token_estimate(
+        execution,
+        pass_id=pass_id,
+        estimated_tokens_in=estimated_tokens_in,
+        estimated_tokens_out=estimated_tokens_out,
+        timestamp=timestamp,
+    )
     recompute_execution_summary(execution)
     summary = execution.get("summary", {})
     total = int(summary.get("topic_total", 0))
@@ -1094,9 +1360,12 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
     if state["research-completed"]:
         execution["status"] = "complete"
         execution["handoff_required"] = False
+        execution["handoff_reason"] = ""
     else:
         execution["status"] = "in_progress"
-        execution["handoff_required"] = True
+        handoff_required, handoff_reason = handoff_decision(execution)
+        execution["handoff_required"] = handoff_required
+        execution["handoff_reason"] = handoff_reason
         execution["handoff_message"] = coerce_string(
             execution.get("handoff_message"),
             DEFAULT_RESEARCH_HANDOFF_MESSAGE,
@@ -1125,9 +1394,13 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
                 "pass_id": pass_id,
                 "pass_summary": pass_summary,
                 "payload_deleted": payload_deleted,
+                "estimated_tokens_in": estimated_tokens_in,
+                "estimated_tokens_out": estimated_tokens_out,
                 "summary": execution.get("summary", {}),
+                "context": execution.get("chat_context", {}),
                 "research_complete": bool(data.get("state", {}).get("research-completed", False)),
                 "handoff_required": bool(execution.get("handoff_required", False)),
+                "handoff_reason": coerce_string(execution.get("handoff_reason")),
                 "handoff_message": coerce_string(
                     execution.get("handoff_message"),
                     DEFAULT_RESEARCH_HANDOFF_MESSAGE,
