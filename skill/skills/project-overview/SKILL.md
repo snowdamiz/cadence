@@ -11,9 +11,9 @@ description: Read-only project overview for Cadence state. Use when users ask fo
    - Never read or edit `.cadence/cadence.json` directly (including `cat`, `rg`, `jq`, or file-read tools). All Cadence state reads and writes must go through Cadence scripts.
 2. Read project overview payload:
    - `python3 "$CADENCE_SCRIPTS_DIR/run-project-overview.py" --project-root "$PROJECT_ROOT"`
-3. Render the response using `roadmap_display_hierarchy` and `roadmap_display_source`:
-   - If source is `planning`, render milestone -> phase only (planner v1 scope).
-   - If source is `workflow`, render full milestone -> phase -> wave -> task hierarchy.
+3. Render the response using `roadmap_display_rows` and `roadmap_display_source`:
+   - If source is `planning`, render milestone -> phase only (planner v1 scope) in a compact table.
+   - If source is `workflow`, render full milestone -> phase -> wave -> task rows in a compact table.
 4. Keep the user-facing output minimal and essential only.
 5. Include the complete displayed hierarchy; do not truncate any milestones/phases (and waves/tasks when source is workflow).
 6. At end of this successful skill conversation, run:
@@ -29,28 +29,23 @@ Respond exactly in this shape:
 ```text
 Project overview:
 
-- Progress: <completion_percent>% (<completed_actionable_items>/<total_actionable_items> actionable items complete)
-- Current: <milestone or "-"> > <phase or "-"> > <wave or "-"> > <task>
-- Current status: <status>
-- Next route: <route_skill_name or "none">
-- Roadmap source: <planning|workflow>
+| Metric | Value |
+| --- | --- |
+| Progress | <completion_percent>% (<completed_actionable_items>/<total_actionable_items> actionable items complete) |
+| Current | <milestone or "-"> -> <phase or "-"> -> <wave or "-"> -> <task> |
+| Current status | <status> |
+| Next route | <route_skill_name or "none"> |
+| Roadmap source | <planning|workflow> |
 
-Roadmap hierarchy:
+Roadmap:
 
-Milestone 1: <milestone_title> [status=<status>]
-  Phase 1: <phase_title> [status=<status>]
-  Phase 2: <phase_title> [status=<status>]
+(If roadmap source is `planning`, render this table and include every milestone/phase row with no truncation:)
+| Milestone | Phase | Status |
+| --- | --- | --- |
+| <milestone_title> | <phase_title or "-"> | <status> |
 
-(If roadmap source is workflow, include full wave/task nesting:)
-Milestone 1: <milestone_title> [status=<status>]
-  Phase 1: <phase_title> [status=<status>]
-    Wave 1: <wave_title> [status=<status>]
-      Task 1: <task_title> [status=<status>] [route=<route_skill_name or "-">] [current=<yes|no>]
-      Task 2: <task_title> [status=<status>] [route=<route_skill_name or "-">] [current=<yes|no>]
-    Wave 2: <wave_title> [status=<status>]
-      Task 1: <task_title> [status=<status>] [route=<route_skill_name or "-">] [current=<yes|no>]
-  Phase 2: <phase_title> [status=<status>]
-    Wave 1: <wave_title> [status=<status>]
-      Task 1: <task_title> [status=<status>] [route=<route_skill_name or "-">] [current=<yes|no>]
-
+(If roadmap source is `workflow`, render this table and include every task row with no truncation:)
+| Milestone | Phase | Wave | Task | Status | Route | Current |
+| --- | --- | --- | --- | --- | --- | --- |
+| <milestone_title> | <phase_title> | <wave_title> | <task_title> | <status> | <route_skill_name or "-"> | <yes|no> |
 ```
