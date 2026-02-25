@@ -123,10 +123,10 @@ Mode-based task override:
 - `brownfield-documenter`: investigate existing repo evidence deeply and persist canonical ideation + research agenda structures for brownfield projects.
 - `ideator`: one-question-at-a-time project ideation, infer a complete domain-agnostic research agenda from the conversation, run an early exhaustive research-topic checkpoint (continue/add/remove) once concept and domain are clear, continue discovery, then run final pre-persistence topic review before persisting; treat execution planning as AI-driven by default (if timelines come up, estimate roughly 10-100x faster than human-only delivery without forcing timeline-specific prompts), then persist finalized ideation payload and checkpoint.
 - `researcher`: execute ideation research agenda in dynamic, bounded multi-pass runs; persist findings to `cadence.json`; estimate context usage from token in/out totals, continue in-chat while under threshold, and hand off only when budget/cap requires a reset.
-- `planner`: for greenfield projects, read Cadence ideation/research context and persist high-level roadmap planning (milestones/phases only) into `cadence.json`.
+- `planner`: for greenfield projects, read Cadence ideation/research context and persist a semantic high-level roadmap (milestones/phases only in planner v1) into `cadence.json`.
 - `ideation-updater`: discuss/modify existing ideation, keep research agenda synchronized, persist updated full ideation object, checkpoint.
 - `project-progress`: read normalized workflow state, report progress (research-only metrics when route is `researcher`), route next action, checkpoint.
-- `project-overview`: read-only utility subskill (manual invocation, not workflow-routed) that returns tabular project metadata, current position, and full milestone/phase/wave/task roadmap progress.
+- `project-overview`: read-only utility subskill (manual invocation, not workflow-routed) that returns tabular project metadata and current position, and displays planner milestone/phase hierarchy when available (falling back to workflow milestone/phase/wave/task hierarchy).
 - all subskills now include strict, skill-specific user-facing response templates to keep handoffs and completion output deterministic.
 
 ## Script System (Execution Backplane)
@@ -162,7 +162,7 @@ Ideation:
 - `prepare-ideation-research.py`: normalize and validate ideation payload research agenda before injection.
 - `query-ideation-research.py`: granular query surface for `ideation.research_agenda` by block, topic, entity, category, tag, priority, and text.
 - `run-research-pass.py`: dynamic pass planning and per-pass persistence for ideation research execution (start one pass, complete one pass, replan unresolved topics) with token-based in/out context estimation and threshold-driven handoff signaling.
-- `run-project-overview.py`: read-only Cadence overview extraction for project metadata, current workflow position, level summaries, and full roadmap rows.
+- `run-project-overview.py`: read-only Cadence overview extraction for project metadata, current workflow position, workflow hierarchy, planner hierarchy, and planner-first display roadmap payloads.
 - `inject-ideation.py`: validate/merge/replace ideation payload, enforce research agenda requirements when ideation is complete, route-guard when marking complete, optional payload-file deletion.
 - `get-ideation.py`, `expose-ideation.py`, `render-ideation-summary.py`: machine/human ideation reads and summaries.
 

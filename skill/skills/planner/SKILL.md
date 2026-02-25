@@ -15,6 +15,7 @@ description: Create a greenfield project roadmap from cadence ideation and resea
    - `python3 "$CADENCE_SCRIPTS_DIR/run-planner.py" --project-root "$PROJECT_ROOT" discover --fuzzy-query "<query>"`
 4. Use discovery output to draft a roadmap payload with this scope:
    - Include overarching milestones and phases only.
+   - Produce a semantic multi-milestone roadmap (default target: 3-6 milestones) with multiple phases per milestone (default target: 2-5 phases), unless the user explicitly requests a narrower plan.
    - Do not include waves or tasks in this planner version.
    - Keep `detail_level` as `milestone_phase_v1`.
 5. Present the proposed milestone/phase roadmap to the user and ask for confirmation.

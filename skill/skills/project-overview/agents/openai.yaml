@@ -9,7 +9,8 @@ interface:
     Read overview data with scripts/run-project-overview.py --project-root "$PROJECT_ROOT".
     Render output using the strict semantic hierarchy format defined in skills/project-overview/SKILL.md.
     Keep output essentials-only: progress, current position, next route, and full roadmap hierarchy.
-    Build roadmap output from roadmap_hierarchy with complete milestone -> phase -> wave -> task nesting.
+    Use roadmap_display_source + roadmap_display_hierarchy from the script response.
+    When source=planning render milestone -> phase only (planner v1 scope); when source=workflow render full milestone -> phase -> wave -> task nesting.
     Finalize from PROJECT_ROOT with scripts/finalize-skill-checkpoint.py --scope project-overview
     --checkpoint overview-reviewed --paths . (allow status=no_changes; treat failures as blocking).
     Keep replies concise and hide internal traces unless asked.

@@ -259,6 +259,124 @@ def build_roadmap_hierarchy(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return milestones
 
 
+def _planning_phase_execution_status(planning: dict[str, Any]) -> str:
+    planning_status = _status(planning.get("status"))
+    if planning_status == "skipped":
+        return "skipped"
+    # Planner v1 captures roadmap intent only; execution remains pending until
+    # a later decomposition subskill adds waves/tasks.
+    return "pending"
+
+
+def build_planning_hierarchy(planning: dict[str, Any]) -> list[dict[str, Any]]:
+    milestones_raw = planning.get("milestones")
+    milestones_raw = milestones_raw if isinstance(milestones_raw, list) else []
+    phase_status = _planning_phase_execution_status(planning)
+    hierarchy: list[dict[str, Any]] = []
+
+    for raw_milestone in milestones_raw:
+        if not isinstance(raw_milestone, dict):
+            continue
+        milestone_id = _text(raw_milestone.get("milestone_id"))
+        milestone_title = _text(raw_milestone.get("title")) or milestone_id or "Untitled milestone"
+        phases_raw = raw_milestone.get("phases")
+        phases_raw = phases_raw if isinstance(phases_raw, list) else []
+
+        phases: list[dict[str, Any]] = []
+        for raw_phase in phases_raw:
+            if not isinstance(raw_phase, dict):
+                continue
+            phase_id = _text(raw_phase.get("phase_id"))
+            phase_title = _text(raw_phase.get("title")) or phase_id or "Untitled phase"
+            phases.append(
+                {
+                    "title": phase_title,
+                    "phase_id": phase_id,
+                    "status": phase_status,
+                }
+            )
+
+        phase_statuses = [_status(phase.get("status")) for phase in phases if isinstance(phase, dict)]
+        milestone_status = rollup_status(phase_statuses) if phase_statuses else phase_status
+        hierarchy.append(
+            {
+                "title": milestone_title,
+                "milestone_id": milestone_id,
+                "status": milestone_status,
+                "phases": phases,
+            }
+        )
+
+    return hierarchy
+
+
+def planning_hierarchy_rows(hierarchy: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for milestone in hierarchy:
+        if not isinstance(milestone, dict):
+            continue
+        milestone_title = _text(milestone.get("title"))
+        phases = milestone.get("phases")
+        phases = phases if isinstance(phases, list) else []
+
+        if not phases:
+            rows.append(
+                {
+                    "milestone": milestone_title,
+                    "phase": "",
+                    "wave": "",
+                    "task": "",
+                    "task_id": _text(milestone.get("milestone_id")),
+                    "status": _status(milestone.get("status")),
+                    "route_skill_name": "",
+                    "route_skill_path": "",
+                    "is_current": False,
+                }
+            )
+            continue
+
+        for phase in phases:
+            if not isinstance(phase, dict):
+                continue
+            phase_title = _text(phase.get("title"))
+            phase_id = _text(phase.get("phase_id"))
+            rows.append(
+                {
+                    "milestone": milestone_title,
+                    "phase": phase_title,
+                    "wave": "",
+                    "task": "",
+                    "task_id": phase_id,
+                    "status": _status(phase.get("status")),
+                    "route_skill_name": "",
+                    "route_skill_path": "",
+                    "is_current": False,
+                }
+            )
+    return rows
+
+
+def planning_level_summary(hierarchy: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    summary = init_level_summary()
+    for milestone in hierarchy:
+        if not isinstance(milestone, dict):
+            continue
+        milestone_status = _status(milestone.get("status"))
+        summary["milestone"]["total"] = int(summary["milestone"]["total"]) + 1
+        summary["milestone"][milestone_status] = int(summary["milestone"].get(milestone_status, 0)) + 1
+
+        phases = milestone.get("phases")
+        phases = phases if isinstance(phases, list) else []
+        for phase in phases:
+            if not isinstance(phase, dict):
+                continue
+            phase_status = _status(phase.get("status"))
+            summary["phase"]["total"] = int(summary["phase"]["total"]) + 1
+            summary["phase"][phase_status] = int(summary["phase"].get(phase_status, 0)) + 1
+
+    return [summary[kind] for kind in ROADMAP_KINDS]
+
+
 def compute_current_position(
     *,
     workflow: dict[str, Any],
@@ -353,14 +471,30 @@ def build_response(data: dict[str, Any], *, project_root: Path, project_root_sou
     workflow = workflow if isinstance(workflow, dict) else {}
 
     plan = workflow.get("plan")
-    rows, level_summary, node_lookup = collect_workflow_roadmap(plan)
+    workflow_rows, workflow_level_summary, node_lookup = collect_workflow_roadmap(plan)
     current_position = compute_current_position(workflow=workflow, node_lookup=node_lookup)
     current_task_id = _text(current_position.get("task_id"))
     if current_task_id and current_task_id != "complete":
-        for row in rows:
+        for row in workflow_rows:
             if _text(row.get("task_id")) == current_task_id:
                 row["is_current"] = True
-    roadmap_hierarchy = build_roadmap_hierarchy(rows)
+    workflow_hierarchy = build_roadmap_hierarchy(workflow_rows)
+
+    planning_hierarchy = build_planning_hierarchy(planning)
+    planning_rows = planning_hierarchy_rows(planning_hierarchy)
+    planning_summary_rows = planning_level_summary(planning_hierarchy)
+    planning_detail_level = _text(planning.get("detail_level"))
+
+    if planning_detail_level == "milestone_phase_v1" and planning_hierarchy:
+        roadmap_display_source = "planning"
+        roadmap_display_rows = planning_rows
+        roadmap_display_level_summary = planning_summary_rows
+        roadmap_display_hierarchy = planning_hierarchy
+    else:
+        roadmap_display_source = "workflow"
+        roadmap_display_rows = workflow_rows
+        roadmap_display_level_summary = workflow_level_summary
+        roadmap_display_hierarchy = workflow_hierarchy
 
     planning_outline, planning_phase_count = planning_outline_rows(planning)
     planning_assumptions = planning.get("assumptions")
@@ -396,9 +530,16 @@ def build_response(data: dict[str, Any], *, project_root: Path, project_root_sou
             "blocked_actionable_items": int(summary.get("blocked_actionable_items", 0) or 0),
         },
         "current_position": current_position,
-        "roadmap_level_summary": level_summary,
-        "roadmap_rows": rows,
-        "roadmap_hierarchy": roadmap_hierarchy,
+        "roadmap_level_summary": workflow_level_summary,
+        "roadmap_rows": workflow_rows,
+        "roadmap_hierarchy": workflow_hierarchy,
+        "planning_level_summary": planning_summary_rows,
+        "planning_rows": planning_rows,
+        "planning_hierarchy": planning_hierarchy,
+        "roadmap_display_source": roadmap_display_source,
+        "roadmap_display_level_summary": roadmap_display_level_summary,
+        "roadmap_display_rows": roadmap_display_rows,
+        "roadmap_display_hierarchy": roadmap_display_hierarchy,
         "planning_summary": {
             "status": _text(planning.get("status", "pending")) or "pending",
             "detail_level": _text(planning.get("detail_level")),

@@ -129,6 +129,22 @@ class RunProjectOverviewTests(unittest.TestCase):
             self.assertGreaterEqual(len(first_wave["tasks"]), 1)
             self.assertIn("is_current", first_wave["tasks"][0])
 
+            self.assertEqual(payload.get("roadmap_display_source"), "planning")
+            display_hierarchy = payload.get("roadmap_display_hierarchy", [])
+            self.assertEqual(len(display_hierarchy), 1)
+            self.assertEqual(display_hierarchy[0]["title"], "Alpha")
+            self.assertEqual(display_hierarchy[0]["status"], "pending")
+            self.assertEqual(len(display_hierarchy[0]["phases"]), 2)
+            self.assertEqual(display_hierarchy[0]["phases"][0]["title"], "Foundation")
+            self.assertNotIn("waves", display_hierarchy[0]["phases"][0])
+
+            display_level_rows = payload.get("roadmap_display_level_summary", [])
+            display_level_map = {row.get("level"): row for row in display_level_rows if isinstance(row, dict)}
+            self.assertEqual(display_level_map["milestone"]["total"], 1)
+            self.assertEqual(display_level_map["phase"]["total"], 2)
+            self.assertEqual(display_level_map["wave"]["total"], 0)
+            self.assertEqual(display_level_map["task"]["total"], 0)
+
     def test_reports_workflow_complete_position(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             project_root = Path(tmp_dir)
@@ -166,6 +182,30 @@ class RunProjectOverviewTests(unittest.TestCase):
             payload = json.loads(result.stdout)
             self.assertEqual(payload["current_position"]["task_id"], "complete")
             self.assertEqual(payload["current_position"]["task"], "Workflow Complete")
+            self.assertEqual(payload.get("roadmap_display_source"), "planning")
+
+    def test_falls_back_to_workflow_display_when_planning_is_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir)
+            data = default_data()
+            write_state(project_root, data)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(RUN_PROJECT_OVERVIEW_SCRIPT),
+                    "--project-root",
+                    str(project_root),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, msg=result.stderr or result.stdout)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload.get("roadmap_display_source"), "workflow")
+            self.assertEqual(payload.get("roadmap_display_hierarchy"), payload.get("roadmap_hierarchy"))
 
 
 if __name__ == "__main__":
