@@ -23,8 +23,10 @@ from workflow_state import reconcile_workflow_state
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROUTE_GUARD_SCRIPT = SCRIPT_DIR / "assert-workflow-route.py"
 CADENCE_JSON_REL = Path(".cadence") / "cadence.json"
-PASS_RESULT_TOPIC_STATUSES = {"complete", "needs_followup"}
+PASS_RESULT_TOPIC_STATUSES = {"complete", "complete_with_caveats", "needs_followup"}
 PASS_RESULT_CONFIDENCE = {"low", "medium", "high"}
+TOPIC_COMPLETE_STATUSES = {"complete", "complete_with_caveats"}
+TOPIC_ACTIVE_STATUSES = {"pending", "in_progress", "needs_followup"}
 
 
 def run_command(command: list[str]) -> subprocess.CompletedProcess[str]:
@@ -74,6 +76,33 @@ def coerce_string_list(value: Any) -> list[str]:
         if text and text not in items:
             items.append(text)
     return items
+
+
+def coerce_positive_int(value: Any, default: int, *, minimum: int = 1) -> int:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        number = default
+    if number < minimum:
+        return minimum
+    return number
+
+
+def planning_config(execution: dict[str, Any]) -> dict[str, int]:
+    planning = execution.get("planning")
+    if not isinstance(planning, dict):
+        planning = {}
+        execution["planning"] = planning
+
+    config = {
+        "target_effort_per_pass": coerce_positive_int(planning.get("target_effort_per_pass", 12), 12),
+        "max_topics_per_pass": coerce_positive_int(planning.get("max_topics_per_pass", 4), 4),
+        "max_passes_per_topic": coerce_positive_int(planning.get("max_passes_per_topic", 3), 3),
+        "max_total_passes": coerce_positive_int(planning.get("max_total_passes", 120), 120),
+        "latest_round": coerce_positive_int(planning.get("latest_round", 0), 0, minimum=0),
+    }
+    planning.update(config)
+    return config
 
 
 def parse_args() -> argparse.Namespace:
@@ -227,7 +256,7 @@ def unresolved_topics(execution: dict[str, Any]) -> list[str]:
         [
             topic_id
             for topic_id, entry in topic_status.items()
-            if isinstance(entry, dict) and coerce_string(entry.get("status"), "pending") != "complete"
+            if isinstance(entry, dict) and coerce_string(entry.get("status"), "pending") in TOPIC_ACTIVE_STATUSES
         ]
     )
 
@@ -236,19 +265,22 @@ def sort_topics_for_planning(topic_ids: list[str], topic_map: dict[str, dict[str
     status_map = execution.get("topic_status")
     status_map = status_map if isinstance(status_map, dict) else {}
 
-    status_rank = {"needs_followup": 0, "in_progress": 1, "pending": 2}
+    status_rank = {"pending": 0, "in_progress": 1, "needs_followup": 2}
     priority_rank = {"high": 0, "medium": 1, "low": 2}
 
-    def sort_key(topic_id: str) -> tuple[int, int, int, str]:
+    def sort_key(topic_id: str) -> tuple[int, int, int, int, str]:
         status = "pending"
+        passes_attempted = 0
         entry = status_map.get(topic_id)
         if isinstance(entry, dict):
             status = coerce_string(entry.get("status"), "pending").lower()
+            passes_attempted = coerce_positive_int(entry.get("passes_attempted", 0), 0, minimum=0)
 
         topic = topic_map.get(topic_id, {})
         priority = coerce_string(topic.get("priority"), "medium").lower()
         return (
             status_rank.get(status, 2),
+            passes_attempted,
             priority_rank.get(priority, 1),
             -topic_effort(topic),
             topic_id,
@@ -258,15 +290,24 @@ def sort_topics_for_planning(topic_ids: list[str], topic_map: dict[str, dict[str
 
 
 def latest_round(execution: dict[str, Any]) -> int:
-    planning = execution.get("planning")
-    planning = planning if isinstance(planning, dict) else {}
-    try:
-        round_value = int(planning.get("latest_round", 0))
-    except (TypeError, ValueError):
-        round_value = 0
-    if round_value < 0:
-        return 0
-    return round_value
+    config = planning_config(execution)
+    round_candidates = [config.get("latest_round", 0)]
+
+    queue = execution.get("pass_queue")
+    if isinstance(queue, list):
+        for entry in queue:
+            if not isinstance(entry, dict):
+                continue
+            round_candidates.append(coerce_positive_int(entry.get("round", 0), 0, minimum=0))
+
+    history = execution.get("pass_history")
+    if isinstance(history, list):
+        for entry in history:
+            if not isinstance(entry, dict):
+                continue
+            round_candidates.append(coerce_positive_int(entry.get("round", 0), 0, minimum=0))
+
+    return max(round_candidates)
 
 
 def rebuild_pass_queue(execution: dict[str, Any], topic_map: dict[str, dict[str, Any]], timestamp: str) -> None:
@@ -275,29 +316,11 @@ def rebuild_pass_queue(execution: dict[str, Any], topic_map: dict[str, dict[str,
         execution["pass_queue"] = []
         return
 
-    planning = execution.get("planning")
-    if not isinstance(planning, dict):
-        planning = {}
-        execution["planning"] = planning
-
-    try:
-        target_effort = int(planning.get("target_effort_per_pass", 12))
-    except (TypeError, ValueError):
-        target_effort = 12
-    if target_effort < 1:
-        target_effort = 1
-
-    try:
-        max_topics = int(planning.get("max_topics_per_pass", 4))
-    except (TypeError, ValueError):
-        max_topics = 4
-    if max_topics < 1:
-        max_topics = 1
-
+    config = planning_config(execution)
+    target_effort = config["target_effort_per_pass"]
+    max_topics = config["max_topics_per_pass"]
     round_number = latest_round(execution) + 1
-    planning["latest_round"] = round_number
-    planning["target_effort_per_pass"] = target_effort
-    planning["max_topics_per_pass"] = max_topics
+    execution["planning"]["latest_round"] = round_number
 
     ordered_topics = sort_topics_for_planning(topic_ids, topic_map, execution)
     queue: list[dict[str, Any]] = []
@@ -351,6 +374,147 @@ def rebuild_pass_queue(execution: dict[str, Any], topic_map: dict[str, dict[str,
     execution["pass_queue"] = queue
 
 
+def append_unique_note(items: list[str], note: str) -> list[str]:
+    normalized = coerce_string_list(items)
+    text = coerce_string(note)
+    if text and text not in normalized:
+        normalized.append(text)
+    return normalized
+
+
+def mark_topic_complete_with_caveats(
+    entry: dict[str, Any],
+    *,
+    topic_id: str,
+    topic_map: dict[str, dict[str, Any]],
+    timestamp: str,
+    note: str,
+) -> None:
+    summary = coerce_string(entry.get("latest_summary"))
+    if not summary:
+        title = coerce_string(topic_map.get(topic_id, {}).get("title"), topic_id)
+        summary = f"Accepted with caveats after bounded research for {title}."
+
+    entry["status"] = "complete_with_caveats"
+    entry["latest_summary"] = summary
+    entry["unresolved_questions"] = append_unique_note(entry.get("unresolved_questions", []), note)
+    entry["updated_at"] = timestamp
+
+
+def enforce_topic_retry_limits(execution: dict[str, Any], topic_map: dict[str, dict[str, Any]], timestamp: str) -> list[str]:
+    topic_status = execution.get("topic_status")
+    if not isinstance(topic_status, dict):
+        return []
+
+    config = planning_config(execution)
+    max_passes_per_topic = config["max_passes_per_topic"]
+    capped_topic_ids: list[str] = []
+    note = (
+        f"Pass cap reached ({max_passes_per_topic}); accepting current findings with caveats."
+    )
+
+    for topic_id, raw_entry in topic_status.items():
+        if not isinstance(raw_entry, dict):
+            continue
+
+        status = coerce_string(raw_entry.get("status"), "pending")
+        if status not in TOPIC_ACTIVE_STATUSES:
+            continue
+
+        passes_attempted = coerce_positive_int(raw_entry.get("passes_attempted", 0), 0, minimum=0)
+        if passes_attempted < max_passes_per_topic:
+            continue
+
+        mark_topic_complete_with_caveats(
+            raw_entry,
+            topic_id=topic_id,
+            topic_map=topic_map,
+            timestamp=timestamp,
+            note=note,
+        )
+        capped_topic_ids.append(topic_id)
+
+    execution["topic_status"] = topic_status
+    return sorted(set(capped_topic_ids))
+
+
+def enforce_total_pass_limit(execution: dict[str, Any], topic_map: dict[str, dict[str, Any]], timestamp: str) -> list[str]:
+    history = execution.get("pass_history")
+    history = history if isinstance(history, list) else []
+    config = planning_config(execution)
+    max_total_passes = config["max_total_passes"]
+    if len(history) < max_total_passes:
+        return []
+
+    topic_status = execution.get("topic_status")
+    if not isinstance(topic_status, dict):
+        return []
+
+    capped_topic_ids: list[str] = []
+    note = (
+        f"Total pass cap reached ({max_total_passes}); accepting current findings with caveats."
+    )
+    for topic_id, raw_entry in topic_status.items():
+        if not isinstance(raw_entry, dict):
+            continue
+        status = coerce_string(raw_entry.get("status"), "pending")
+        if status not in TOPIC_ACTIVE_STATUSES:
+            continue
+
+        mark_topic_complete_with_caveats(
+            raw_entry,
+            topic_id=topic_id,
+            topic_map=topic_map,
+            timestamp=timestamp,
+            note=note,
+        )
+        capped_topic_ids.append(topic_id)
+
+    if capped_topic_ids:
+        execution["pass_queue"] = []
+        execution["topic_status"] = topic_status
+    return sorted(set(capped_topic_ids))
+
+
+def prune_pass_queue(execution: dict[str, Any]) -> None:
+    queue = execution.get("pass_queue")
+    if not isinstance(queue, list):
+        execution["pass_queue"] = []
+        return
+
+    topic_status = execution.get("topic_status")
+    topic_status = topic_status if isinstance(topic_status, dict) else {}
+    active_topic_ids = {
+        topic_id
+        for topic_id, entry in topic_status.items()
+        if isinstance(entry, dict) and coerce_string(entry.get("status"), "pending") in TOPIC_ACTIVE_STATUSES
+    }
+
+    filtered_queue: list[dict[str, Any]] = []
+    for entry in queue:
+        if not isinstance(entry, dict):
+            continue
+        topic_ids = [topic_id for topic_id in coerce_string_list(entry.get("topic_ids")) if topic_id in active_topic_ids]
+        if not topic_ids:
+            continue
+        status = coerce_string(entry.get("status"), "pending")
+        if status not in {"pending", "in_progress"}:
+            status = "pending"
+        filtered_queue.append(
+            {
+                "pass_id": coerce_string(entry.get("pass_id")),
+                "round": coerce_positive_int(entry.get("round", 0), 0, minimum=0),
+                "status": status,
+                "topic_ids": topic_ids,
+                "planned_effort": coerce_positive_int(entry.get("planned_effort", 0), 0, minimum=0),
+                "created_at": coerce_string(entry.get("created_at")),
+                "started_at": coerce_string(entry.get("started_at")),
+            }
+        )
+
+    execution["pass_queue"] = filtered_queue
+
+
 def recompute_execution_summary(execution: dict[str, Any]) -> None:
     topic_status = execution.get("topic_status")
     topic_status = topic_status if isinstance(topic_status, dict) else {}
@@ -360,7 +524,20 @@ def recompute_execution_summary(execution: dict[str, Any]) -> None:
     history = history if isinstance(history, list) else []
 
     total = len(topic_status)
-    complete = len([entry for entry in topic_status.values() if isinstance(entry, dict) and entry.get("status") == "complete"])
+    complete = len(
+        [
+            entry
+            for entry in topic_status.values()
+            if isinstance(entry, dict) and coerce_string(entry.get("status"), "pending") in TOPIC_COMPLETE_STATUSES
+        ]
+    )
+    caveated = len(
+        [
+            entry
+            for entry in topic_status.values()
+            if isinstance(entry, dict) and coerce_string(entry.get("status"), "pending") == "complete_with_caveats"
+        ]
+    )
     followup = len(
         [
             entry
@@ -408,6 +585,7 @@ def recompute_execution_summary(execution: dict[str, Any]) -> None:
     execution["summary"] = {
         "topic_total": total,
         "topic_complete": complete,
+        "topic_caveated": caveated,
         "topic_needs_followup": followup,
         "topic_pending": pending,
         "pass_pending": len(queue),
@@ -643,6 +821,10 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
         )
         return 2
 
+    enforce_topic_retry_limits(execution, topic_map, timestamp)
+    enforce_total_pass_limit(execution, topic_map, timestamp)
+    prune_pass_queue(execution)
+
     queue = execution.get("pass_queue")
     queue = queue if isinstance(queue, list) else []
     current_pass = next(
@@ -655,8 +837,9 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
     )
 
     if not isinstance(current_pass, dict):
-        if not queue:
+        if not queue and unresolved_topics(execution):
             rebuild_pass_queue(execution, topic_map, timestamp)
+            prune_pass_queue(execution)
             queue = execution.get("pass_queue", [])
         current_pass = next(
             (
@@ -695,7 +878,7 @@ def handle_start(project_root: Path, args: argparse.Namespace) -> int:
         entry = topic_status.get(topic_id)
         if not isinstance(entry, dict):
             continue
-        if coerce_string(entry.get("status"), "pending") != "complete":
+        if coerce_string(entry.get("status"), "pending") not in TOPIC_COMPLETE_STATUSES:
             if entry.get("status") != "needs_followup":
                 entry["status"] = "in_progress"
             entry["last_pass_id"] = pass_id
@@ -810,7 +993,7 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
 
         unresolved = coerce_string_list(result.get("unresolved_questions"))
         if status == "complete" and unresolved:
-            status = "needs_followup"
+            status = "complete_with_caveats"
 
         summary = coerce_string(result.get("summary"))
         confidence = coerce_string(result.get("confidence"), "medium").lower()
@@ -841,12 +1024,7 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
             }
             topic_status[topic_id] = entry
 
-        try:
-            passes_attempted = int(entry.get("passes_attempted", 0))
-        except (TypeError, ValueError):
-            passes_attempted = 0
-        if passes_attempted < 0:
-            passes_attempted = 0
+        passes_attempted = coerce_positive_int(entry.get("passes_attempted", 0), 0, minimum=0)
         entry["passes_attempted"] = passes_attempted + 1
         entry["status"] = status
         entry["last_pass_id"] = pass_id
@@ -894,13 +1072,17 @@ def handle_complete(project_root: Path, args: argparse.Namespace) -> int:
     )
     execution["pass_history"] = history
 
-    # Remove the completed in-progress pass and dynamically rebuild next passes.
+    # Remove the completed in-progress pass. Re-plan only at round boundaries.
     execution["pass_queue"] = [
         entry
         for entry in queue
         if isinstance(entry, dict) and coerce_string(entry.get("pass_id")) != pass_id
     ]
-    rebuild_pass_queue(execution, topic_map, timestamp)
+    enforce_topic_retry_limits(execution, topic_map, timestamp)
+    enforce_total_pass_limit(execution, topic_map, timestamp)
+    prune_pass_queue(execution)
+    if not execution.get("pass_queue") and unresolved_topics(execution):
+        rebuild_pass_queue(execution, topic_map, timestamp)
 
     recompute_execution_summary(execution)
     summary = execution.get("summary", {})

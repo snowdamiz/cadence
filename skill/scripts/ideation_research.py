@@ -11,7 +11,14 @@ RESEARCH_SCHEMA_VERSION = 1
 PRIORITY_LEVELS = {"low", "medium", "high"}
 RESEARCH_EXECUTION_SCHEMA_VERSION = 1
 RESEARCH_EXECUTION_STATUSES = {"pending", "in_progress", "complete"}
-RESEARCH_TOPIC_STATUSES = {"pending", "in_progress", "needs_followup", "complete"}
+RESEARCH_TOPIC_STATUSES = {
+    "pending",
+    "in_progress",
+    "needs_followup",
+    "complete",
+    "complete_with_caveats",
+}
+RESEARCH_TOPIC_COMPLETE_STATUSES = {"complete", "complete_with_caveats"}
 DEFAULT_RESEARCH_HANDOFF_MESSAGE = 'Start a new chat and say "continue research".'
 
 
@@ -84,11 +91,14 @@ def default_research_execution() -> dict[str, Any]:
         "planning": {
             "target_effort_per_pass": 12,
             "max_topics_per_pass": 4,
+            "max_passes_per_topic": 3,
+            "max_total_passes": 120,
             "latest_round": 0,
         },
         "summary": {
             "topic_total": 0,
             "topic_complete": 0,
+            "topic_caveated": 0,
             "topic_needs_followup": 0,
             "topic_pending": 0,
             "pass_pending": 0,
@@ -182,6 +192,20 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
         max_topics = 1
 
     try:
+        max_passes_per_topic = int(planning.get("max_passes_per_topic", 3))
+    except (TypeError, ValueError):
+        max_passes_per_topic = 3
+    if max_passes_per_topic < 1:
+        max_passes_per_topic = 1
+
+    try:
+        max_total_passes = int(planning.get("max_total_passes", 120))
+    except (TypeError, ValueError):
+        max_total_passes = 120
+    if max_total_passes < 1:
+        max_total_passes = 1
+
+    try:
         latest_round = int(planning.get("latest_round", 0))
     except (TypeError, ValueError):
         latest_round = 0
@@ -191,6 +215,8 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
     normalized["planning"] = {
         "target_effort_per_pass": target_effort,
         "max_topics_per_pass": max_topics,
+        "max_passes_per_topic": max_passes_per_topic,
+        "max_total_passes": max_total_passes,
         "latest_round": latest_round,
     }
 
@@ -305,7 +331,10 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
     normalized["source_registry"] = source_registry
 
     total_topics = len(topic_status)
-    topic_complete = len([entry for entry in topic_status.values() if entry.get("status") == "complete"])
+    topic_complete = len(
+        [entry for entry in topic_status.values() if entry.get("status") in RESEARCH_TOPIC_COMPLETE_STATUSES]
+    )
+    topic_caveated = len([entry for entry in topic_status.values() if entry.get("status") == "complete_with_caveats"])
     topic_needs_followup = len(
         [entry for entry in topic_status.values() if entry.get("status") == "needs_followup"]
     )
@@ -331,6 +360,7 @@ def _normalize_research_execution(agenda: dict[str, Any], raw_execution: Any) ->
     normalized["summary"] = {
         "topic_total": total_topics,
         "topic_complete": topic_complete,
+        "topic_caveated": topic_caveated,
         "topic_needs_followup": topic_needs_followup,
         "topic_pending": max(topic_pending, 0),
         "pass_pending": len(pass_queue),
@@ -405,6 +435,7 @@ def reset_research_execution(ideation: Any) -> dict[str, Any]:
     execution["summary"] = {
         "topic_total": len(topic_index),
         "topic_complete": 0,
+        "topic_caveated": 0,
         "topic_needs_followup": 0,
         "topic_pending": len(topic_index),
         "pass_pending": 0,

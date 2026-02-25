@@ -26,7 +26,7 @@ description: Execute ideation research agenda topics through dynamic multi-pass 
    - `topics` (array)
    - Each `topics[]` item must include:
      - `topic_id` (string, must be in current pass topic_ids)
-     - `status` (`complete` or `needs_followup`)
+     - `status` (`complete`, `complete_with_caveats`, or `needs_followup`)
      - `summary` (string)
      - `confidence` (`low|medium|high`)
      - `unresolved_questions` (array of strings)
