@@ -85,6 +85,23 @@ def init_level_summary() -> dict[str, dict[str, int | str]]:
     }
 
 
+def rollup_status(statuses: list[str]) -> str:
+    normalized = [_status(value) for value in statuses]
+    if not normalized:
+        return "pending"
+    if all(value in {"complete", "skipped"} for value in normalized):
+        return "complete"
+    if all(value == "pending" for value in normalized):
+        return "pending"
+    if any(value == "in_progress" for value in normalized):
+        return "in_progress"
+    if any(value in {"complete", "skipped"} for value in normalized):
+        return "in_progress"
+    if any(value == "blocked" for value in normalized):
+        return "blocked"
+    return "pending"
+
+
 def collect_workflow_roadmap(plan: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, dict[str, Any]]]:
     rows: list[dict[str, Any]] = []
     level_summary = init_level_summary()
@@ -154,6 +171,92 @@ def collect_workflow_roadmap(plan: Any) -> tuple[list[dict[str, Any]], list[dict
     walk(plan, context={}, path_ids=[], path_titles=[])
     ordered_summary = [level_summary[kind] for kind in ROADMAP_KINDS]
     return rows, ordered_summary, node_lookup
+
+
+def build_roadmap_hierarchy(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    milestones: list[dict[str, Any]] = []
+    milestone_index: dict[str, dict[str, Any]] = {}
+
+    for row in rows:
+        milestone_title = _text(row.get("milestone")) or "Unscoped Milestone"
+        phase_title = _text(row.get("phase")) or "Unscoped Phase"
+        wave_title = _text(row.get("wave")) or "Unscoped Wave"
+        task_title = _text(row.get("task")) or _text(row.get("task_id")) or "Untitled Task"
+        task_status = _status(row.get("status"))
+        task_id = _text(row.get("task_id"))
+        route_skill_name = _text(row.get("route_skill_name"))
+        is_current = bool(row.get("is_current", False))
+
+        milestone_key = milestone_title
+        milestone_entry = milestone_index.get(milestone_key)
+        if not isinstance(milestone_entry, dict):
+            milestone_entry = {
+                "title": milestone_title,
+                "status": "pending",
+                "phases": [],
+                "_phase_index": {},
+            }
+            milestones.append(milestone_entry)
+            milestone_index[milestone_key] = milestone_entry
+
+        phase_index = milestone_entry.get("_phase_index")
+        phase_index = phase_index if isinstance(phase_index, dict) else {}
+        phase_entry = phase_index.get(phase_title)
+        if not isinstance(phase_entry, dict):
+            phase_entry = {
+                "title": phase_title,
+                "status": "pending",
+                "waves": [],
+                "_wave_index": {},
+            }
+            milestone_entry["phases"].append(phase_entry)
+            phase_index[phase_title] = phase_entry
+            milestone_entry["_phase_index"] = phase_index
+
+        wave_index = phase_entry.get("_wave_index")
+        wave_index = wave_index if isinstance(wave_index, dict) else {}
+        wave_entry = wave_index.get(wave_title)
+        if not isinstance(wave_entry, dict):
+            wave_entry = {
+                "title": wave_title,
+                "status": "pending",
+                "tasks": [],
+            }
+            phase_entry["waves"].append(wave_entry)
+            wave_index[wave_title] = wave_entry
+            phase_entry["_wave_index"] = wave_index
+
+        wave_entry["tasks"].append(
+            {
+                "title": task_title,
+                "task_id": task_id,
+                "status": task_status,
+                "route_skill_name": route_skill_name,
+                "is_current": is_current,
+            }
+        )
+
+    for milestone in milestones:
+        phases = milestone.get("phases")
+        phases = phases if isinstance(phases, list) else []
+        phase_statuses: list[str] = []
+        for phase in phases:
+            waves = phase.get("waves")
+            waves = waves if isinstance(waves, list) else []
+            wave_statuses: list[str] = []
+            for wave in waves:
+                tasks = wave.get("tasks")
+                tasks = tasks if isinstance(tasks, list) else []
+                task_statuses = [_status(task.get("status")) for task in tasks if isinstance(task, dict)]
+                wave["status"] = rollup_status(task_statuses)
+                wave_statuses.append(_status(wave.get("status")))
+            phase["status"] = rollup_status(wave_statuses)
+            phase_statuses.append(_status(phase.get("status")))
+            phase.pop("_wave_index", None)
+        milestone["status"] = rollup_status(phase_statuses)
+        milestone.pop("_phase_index", None)
+
+    return milestones
 
 
 def compute_current_position(
@@ -257,6 +360,7 @@ def build_response(data: dict[str, Any], *, project_root: Path, project_root_sou
         for row in rows:
             if _text(row.get("task_id")) == current_task_id:
                 row["is_current"] = True
+    roadmap_hierarchy = build_roadmap_hierarchy(rows)
 
     planning_outline, planning_phase_count = planning_outline_rows(planning)
     planning_assumptions = planning.get("assumptions")
@@ -294,6 +398,7 @@ def build_response(data: dict[str, Any], *, project_root: Path, project_root_sou
         "current_position": current_position,
         "roadmap_level_summary": level_summary,
         "roadmap_rows": rows,
+        "roadmap_hierarchy": roadmap_hierarchy,
         "planning_summary": {
             "status": _text(planning.get("status", "pending")) or "pending",
             "detail_level": _text(planning.get("detail_level")),

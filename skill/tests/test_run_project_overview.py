@@ -114,6 +114,21 @@ class RunProjectOverviewTests(unittest.TestCase):
             self.assertEqual(planning_outline[0]["milestone_title"], "Alpha")
             self.assertIn("Foundation", planning_outline[0]["phase_names"])
 
+            hierarchy = payload.get("roadmap_hierarchy", [])
+            self.assertGreaterEqual(len(hierarchy), 1)
+            first_milestone = hierarchy[0]
+            self.assertIn("title", first_milestone)
+            self.assertIn("status", first_milestone)
+            self.assertIn("phases", first_milestone)
+            self.assertGreaterEqual(len(first_milestone["phases"]), 1)
+            first_phase = first_milestone["phases"][0]
+            self.assertIn("waves", first_phase)
+            self.assertGreaterEqual(len(first_phase["waves"]), 1)
+            first_wave = first_phase["waves"][0]
+            self.assertIn("tasks", first_wave)
+            self.assertGreaterEqual(len(first_wave["tasks"]), 1)
+            self.assertIn("is_current", first_wave["tasks"][0])
+
     def test_reports_workflow_complete_position(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             project_root = Path(tmp_dir)
